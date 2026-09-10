@@ -1,0 +1,6 @@
+# Built-in themes; no executable theme plugin.
+theme:
+  dark: dark-catppuccin
+  light: light-catppuccin
+memory:
+  backend: "off"

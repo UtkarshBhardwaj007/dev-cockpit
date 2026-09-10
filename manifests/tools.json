@@ -1,0 +1,256 @@
+{
+  "schema_version": 1,
+  "tools": [
+    {
+      "id": "git",
+      "binary": "git",
+      "profile": "core",
+      "platforms": {
+        "macos": {
+          "package": "git"
+        },
+        "linux": {
+          "package": "git"
+        },
+        "windows": {
+          "package": "Git.Git"
+        }
+      }
+    },
+    {
+      "id": "gh",
+      "binary": "gh",
+      "profile": "core",
+      "platforms": {
+        "macos": {
+          "package": "gh"
+        },
+        "linux": {
+          "package": "gh"
+        },
+        "windows": {
+          "package": "GitHub.cli"
+        }
+      }
+    },
+    {
+      "id": "ripgrep",
+      "binary": "rg",
+      "profile": "core",
+      "platforms": {
+        "macos": {
+          "package": "ripgrep"
+        },
+        "linux": {
+          "package": "ripgrep"
+        },
+        "windows": {
+          "package": "BurntSushi.ripgrep.MSVC"
+        }
+      }
+    },
+    {
+      "id": "fd",
+      "binary": "fd",
+      "profile": "core",
+      "platforms": {
+        "macos": {
+          "package": "fd"
+        },
+        "linux": {
+          "package": "fd"
+        },
+        "windows": {
+          "package": "sharkdp.fd"
+        }
+      }
+    },
+    {
+      "id": "fzf",
+      "binary": "fzf",
+      "profile": "core",
+      "platforms": {
+        "macos": {
+          "package": "fzf"
+        },
+        "linux": {
+          "package": "fzf"
+        },
+        "windows": {
+          "package": "junegunn.fzf"
+        }
+      }
+    },
+    {
+      "id": "zoxide",
+      "binary": "zoxide",
+      "profile": "core",
+      "platforms": {
+        "macos": {
+          "package": "zoxide"
+        },
+        "linux": {
+          "package": "zoxide"
+        },
+        "windows": {
+          "package": "ajeetdsouza.zoxide"
+        }
+      }
+    },
+    {
+      "id": "lazygit",
+      "binary": "lazygit",
+      "profile": "core",
+      "platforms": {
+        "macos": {
+          "package": "lazygit"
+        },
+        "linux": {
+          "package": "lazygit"
+        },
+        "windows": {
+          "package": "JesseDuffield.lazygit"
+        }
+      }
+    },
+    {
+      "id": "delta",
+      "binary": "delta",
+      "profile": "core",
+      "platforms": {
+        "macos": {
+          "package": "git-delta"
+        },
+        "linux": {
+          "package": "git-delta"
+        },
+        "windows": {
+          "package": "dandavison.delta"
+        }
+      }
+    },
+    {
+      "id": "yazi",
+      "binary": "yazi",
+      "profile": "core",
+      "platforms": {
+        "macos": {
+          "package": "yazi"
+        },
+        "linux": {
+          "package": "yazi"
+        },
+        "windows": {
+          "package": "sxyazi.yazi"
+        }
+      }
+    },
+    {
+      "id": "starship",
+      "binary": "starship",
+      "profile": "core",
+      "platforms": {
+        "macos": {
+          "package": "starship"
+        },
+        "linux": {
+          "package": "starship"
+        },
+        "windows": {
+          "package": "Starship.Starship"
+        }
+      }
+    },
+    {
+      "id": "mise",
+      "binary": "mise",
+      "profile": "core",
+      "platforms": {
+        "macos": {
+          "package": "mise"
+        },
+        "linux": {
+          "package": "mise"
+        },
+        "windows": {
+          "package": "jdx.mise"
+        }
+      }
+    },
+    {
+      "id": "herdr",
+      "binary": "herdr",
+      "profile": "cockpit",
+      "platforms": {
+        "macos": {
+          "package": "herdr"
+        },
+        "linux": {
+          "package": "herdr"
+        },
+        "windows": {
+          "manual": "Install the stable native build: https://herdr.dev/docs/install/ (automated adapter pending)"
+        }
+      }
+    },
+    {
+      "id": "omp",
+      "binary": "omp",
+      "profile": "cockpit",
+      "platforms": {
+        "macos": {
+          "package": "can1357/tap/omp"
+        },
+        "linux": {
+          "package": "can1357/tap/omp"
+        },
+        "windows": {
+          "manual": "Install the official native build: https://github.com/can1357/oh-my-pi#install (automated adapter pending)"
+        }
+      }
+    },
+    {
+      "id": "ghostty",
+      "binary": "ghostty",
+      "profile": "terminal",
+      "platforms": {
+        "macos": {
+          "package": "ghostty",
+          "cask": true
+        },
+        "linux": {
+          "manual": "Use the package for your distro: https://ghostty.org/docs/install/binary (adapter pending)"
+        },
+        "windows": null
+      }
+    },
+    {
+      "id": "wezterm",
+      "binary": "wezterm",
+      "profile": "terminal",
+      "platforms": {
+        "macos": null,
+        "linux": null,
+        "windows": {
+          "package": "wez.wezterm"
+        }
+      }
+    },
+    {
+      "id": "atuin",
+      "binary": "atuin",
+      "profile": "history",
+      "platforms": {
+        "macos": {
+          "package": "atuin"
+        },
+        "linux": {
+          "package": "atuin"
+        },
+        "windows": {
+          "package": "Atuinsh.Atuin"
+        }
+      }
+    }
+  ]
+}

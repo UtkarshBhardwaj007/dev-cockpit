@@ -1,0 +1,34 @@
+[
+  {
+    "file": "config/yazi/theme.toml",
+    "repository": "catppuccin/yazi",
+    "path": "themes/mocha/catppuccin-mocha-mauve.toml",
+    "revision": "d62802be39210ea10e54b3e3b09735c6cb9e57c1",
+    "license": "MIT",
+    "sha256": "79d14028498ecf7da42fe3dc53b4436b43a24c723a0dea93020bffd23d235436"
+  },
+  {
+    "file": "licenses/catppuccin-yazi.txt",
+    "repository": "catppuccin/yazi",
+    "path": "LICENSE",
+    "revision": "d62802be39210ea10e54b3e3b09735c6cb9e57c1",
+    "license": "MIT",
+    "sha256": "814096d2c34cc216c624738a49356f32b7237733b4f7edb0685f4e50ef5074ba"
+  },
+  {
+    "file": "config/starship/starship.toml",
+    "repository": "starship/starship",
+    "path": "docs/public/presets/toml/catppuccin-powerline.toml",
+    "revision": "e2d1a2c482fb43667017241dc9802f693628b53d",
+    "license": "ISC",
+    "sha256": "777037ea0a70c3c093b5d513d46d728e07d2c3dbdaa7091bdd7d08bb582df33c"
+  },
+  {
+    "file": "licenses/starship.txt",
+    "repository": "starship/starship",
+    "path": "LICENSE",
+    "revision": "e2d1a2c482fb43667017241dc9802f693628b53d",
+    "license": "ISC",
+    "sha256": "2587580d0ec4ddc43d1534745a19ffeec0b63186497c2ed4bc36832da91b13e2"
+  }
+]

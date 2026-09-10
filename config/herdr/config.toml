@@ -1,0 +1,5 @@
+[theme]
+name = "catppuccin"
+
+# Use upstream defaults for persistence, SSH and keybindings.
+# This file does not create a layout or install agent extensions.

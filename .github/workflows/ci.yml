@@ -1,0 +1,49 @@
+name: Bootstrap checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Unit and isolated configuration integration tests
+        run: python -m unittest discover -s tests -v
+      - name: Unix entrypoint and shell syntax
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          sh -n bootstrap/setup.sh
+          bash -n config/shell/init.sh
+          sh bootstrap/setup.sh --dry-run
+      - name: Windows PowerShell 5.1 entrypoint
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: '& .\bootstrap\setup.ps1 -DryRun'
+      - name: PowerShell 7 entrypoint
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: '& .\bootstrap\setup.ps1 -DryRun'
+      - name: Published Unix one-liner (preview only)
+        if: github.event_name == 'push' && runner.os != 'Windows'
+        shell: bash
+        env:
+          DEV_COCKPIT_REF: ${{ github.sha }}
+        run: curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/UtkarshBhardwaj007/dev-cockpit/main/bootstrap/setup.sh | sh
+      - name: Published Windows one-liner (preview only)
+        if: github.event_name == 'push' && runner.os == 'Windows'
+        shell: powershell
+        env:
+          DEV_COCKPIT_REF: ${{ github.sha }}
+        run: '& ([scriptblock]::Create((Invoke-RestMethod https://raw.githubusercontent.com/UtkarshBhardwaj007/dev-cockpit/main/bootstrap/setup.ps1)))'
