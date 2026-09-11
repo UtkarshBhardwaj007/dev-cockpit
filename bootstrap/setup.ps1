@@ -16,13 +16,32 @@ Set-StrictMode -Version Latest
 $hasAction = $Install -or $ApplyConfig -or $ActivateShell -or $UninstallConfig -or $Doctor -or $DryRun
 if (-not $hasAction -and $CliArguments.Count -eq 0) { $Install = $true; $ApplyConfig = $true }
 $mutate = ($Install -or $ApplyConfig -or $ActivateShell) -and -not ($DryRun -or $Doctor -or $UninstallConfig)
+# The process PATH environment variable is 'Path' on Windows but 'PATH' on
+# Unix, where $env: access is case-sensitive. Resolve it case-insensitively so
+# this launcher works on every supported platform.
+function Get-CockpitProcessPath {
+    foreach ($name in @('Path', 'PATH')) {
+        $value = [Environment]::GetEnvironmentVariable($name, 'Process')
+        if ($null -ne $value) { return $value }
+    }
+    return ''
+}
+function Set-CockpitProcessPath {
+    param([string]$Value)
+    $name = if ($null -ne [Environment]::GetEnvironmentVariable('Path', 'Process')) { 'Path' } else { 'PATH' }
+    [Environment]::SetEnvironmentVariable($name, $Value, 'Process')
+}
 function Update-CockpitPath {
     $additional = @((Join-Path $env:USERPROFILE '.local\bin'), (Join-Path $env:LOCALAPPDATA 'Microsoft\WinGet\Links'), (Join-Path $env:LOCALAPPDATA 'Microsoft\WindowsApps'))
     foreach ($scope in @('Machine', 'User')) {
         $pathValue = [Environment]::GetEnvironmentVariable('Path', $scope)
         if ($pathValue) { $additional += $pathValue.Split(';') }
     }
-    $env:Path = (($additional + $env:Path.Split(';') | Where-Object { $_ } | Select-Object -Unique) -join ';')
+    $existing = @()
+    $current = Get-CockpitProcessPath
+    if ($current) { $existing = $current -split ';' }
+    $combined = ($additional + $existing | Where-Object { $_ } | Select-Object -Unique) -join ';'
+    Set-CockpitProcessPath -Value $combined
 }
 function Find-CockpitPython {
     foreach ($candidate in @('python3', 'python', 'py')) {
