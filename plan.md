@@ -6,6 +6,37 @@
 
 ---
 
+## 0. Implementation Status — Current Snapshot
+
+> Live status overlay. Sections 1–24 below are the original design brief; this section records what has actually been built as of the latest milestone and what remains open. Companion docs: `docs/feasibility.md`, `docs/decisions.md`, `docs/validation.md`, `docs/security.md`, `docs/customization.md`, `docs/intelligence.md`, `docs/themes.md`, `docs/mobile-access.md`.
+
+### Done (implemented, tested, documented)
+
+- **Unified CLI** — `dev_cockpit/cli.py` provides setup flags (`--install`, `--apply-config`, `--activate-shell`, `--uninstall-config`, `--doctor`, `--dry-run`, `--profile`, `--platform`, `--home`) and subcommands `launch`, `doctor`, `update`, `uninstall`, `completions`, `mobile`, `memory`, `graph`, `open`. `bootstrap/cockpit.py` is a thin shim.
+- **Install-by-default** — a no-flag install provisions `core`, `cockpit` (herdr + OMP), and `terminal` (Ghostty/WezTerm + Nerd Font). `history` and `extras` remain opt-in profiles.
+- **One-command install per OS** — `README.md` documents a `curl | sh` one-liner (macOS/Linux) and a PowerShell `Invoke-RestMethod` scriptblock (Windows), exercised by the CI install smoke test on all three OSes.
+- **Auto-provisioning** — launchers install Python when missing (Homebrew on macOS, apt/dnf/pacman on Linux, WinGet on Windows); installs are idempotent with a `--dry-run` preview and a `--doctor` check.
+- **Shell integration** — `config/shell/init.sh` / `init.ps1` add managed activation blocks and define `dev`, `dev-doctor`, `dev-update`, `dev-completions`, `dev-memory`, `dev-graph`, etc.
+- **Completions** — shell completion scripts (gh, herdr, omp, starship) are generated automatically during initial install into `~/.config/dev-cockpit/completions/<shell>/` and auto-loaded on startup; `dev-completions` is a manual refresh tool.
+- **Runtime deploy (one-liner)** — piped / `curl | sh` installs persist a content-addressed copy of the cockpit runtime so `dev` keeps working after the installer exits; local-clone installs keep using the live checkout.
+- **Ownership/safety** — configuration is ownership-ledger based: only unchanged project-owned files are updated/removed, user-edited files are preserved, symlink/reparse targets are rejected, and an exclusive per-home `configuration.lock` refuses concurrent setup.
+- **CLI tooling** — manifest-driven (`manifests/tools.json`, `manifests/downloads.json`) install of git, gh, rg, fd, fzf, zoxide, lazygit, delta, yazi, atuin, starship, mise, direnv, btop, plus herdr/OMP and terminals.
+- **Themes** — Catppuccin Mocha vendored across terminals/CLI tools; alternative-theme links in `docs/themes.md`.
+- **Docs** — `README.md`, `docs/feasibility.md`, `docs/decisions.md`, `docs/validation.md`, `docs/security.md`, `docs/customization.md`, `docs/intelligence.md`, `docs/themes.md`, `docs/mobile-access.md`.
+- **Tests** — `python3 -m unittest discover -s tests` → **131 tests, OK (5 skipped)**; shell syntax checks pass (`sh -n bootstrap/setup.sh`, `bash -n config/shell/init.sh`).
+- **Delivery** — branch `feat/dev-cockpit-cli-install-by-default`; PR #1 open.
+
+### Deferred / not yet implemented (open work)
+
+- **Remote development** — Herdr remote-machine workflow, SSH config integration, and YubiKey touch-policy validation are not implemented. System OpenSSH config is untouched and never silently weakened.
+- **Global memory (Mem0)** — deferred by design (`docs/decisions.md` — "Off initially; evaluate OMP built-in memory before Mem0"). Current memory/graph are per-project and opt-in: `dev-memory` (OMP local memory + notes) and `dev-graph` (local Graphify code graph).
+- **OMP advanced capabilities** — LSP/DAP validation, browser tooling, web search, subagent delegation, plugins — not yet validated end-to-end.
+- **Clean-machine E2E** — CI runs an install smoke test on the published one-liner; a full clean-machine E2E matrix across all three OSes is not yet established.
+- **Signed release bundles** — versioned, publisher-signed release bundles remain an open milestone (`docs/security.md`).
+- **`docs/architecture.md` and `docs/troubleshooting.md`** — referenced by the brief but not yet authored.
+
+---
+
 ## 1. Desired End State
 
 Build a reproducible, cross-platform AI-first developer environment whose source of truth is a single Git repository.
