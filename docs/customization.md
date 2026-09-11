@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-The first bootstrap requires Python 3.9+. Use `brew install python` with an existing Homebrew installation, your Linux distribution's Python package, or an official Python Windows installation. Reopen the terminal and verify `python3 --version` or `py -3 --version`. Windows Store execution aliases are not sufficient unless they launch an installed interpreter.
+The first bootstrap requires Python 3.9+. The one-liner auto-provisions Python (plus Homebrew on macOS/Linux, or WinGet on Windows) when it is missing, so manual installation is normally unnecessary. As an alternative, you can install Python yourself first: use `brew install python` with an existing Homebrew installation, your Linux distribution's Python package, or an official Python Windows installation. Reopen the terminal and verify `python3 --version` or `py -3 --version`. Windows Store execution aliases are not sufficient unless they launch an installed interpreter.
 
 For package installation, install [Homebrew](https://docs.brew.sh/Installation) on macOS or supported Linux, or use [WinGet](https://learn.microsoft.com/en-us/windows/package-manager/winget/) on Windows. Homebrew's Linux build prerequisites and supported glibc/architectures still apply. Run this bootstrap as your own user, not through `sudo`.
 

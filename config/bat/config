@@ -1,0 +1,3 @@
+# A bundled dark theme, available without downloading/building a theme cache.
+--theme="TwoDark"
+--style="numbers,changes,header"

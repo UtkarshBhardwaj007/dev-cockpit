@@ -35,13 +35,13 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: '& .\bootstrap\setup.ps1 -DryRun'
-      - name: Published Unix one-liner (preview only)
+      - name: Published Unix one-liner (install smoke test)
         if: github.event_name == 'push' && runner.os != 'Windows'
         shell: bash
         env:
           DEV_COCKPIT_REF: ${{ github.sha }}
         run: curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/UtkarshBhardwaj007/dev-cockpit/main/bootstrap/setup.sh | sh
-      - name: Published Windows one-liner (preview only)
+      - name: Published Windows one-liner (install smoke test)
         if: github.event_name == 'push' && runner.os == 'Windows'
         shell: powershell
         env:

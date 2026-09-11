@@ -75,6 +75,6 @@ An agent holding a key does not guarantee a FIDO2 signing operation can skip use
 
 ## Bootstrap conclusion
 
-Use two small native launchers sharing one Python implementation and package manifest. The first milestone requires Python 3.9+, Homebrew for Unix package installation, or WinGet on Windows. The public commands run a preview by default. This deliberately **does not yet satisfy the clean-machine one-command acceptance criterion**: prerequisites, Linux GUI packaging, Windows Herdr/OMP installation, signed/pinned bundles and interactive acceptance remain work items.
+Use two small native launchers sharing one Python implementation and package manifest. The launcher provisions Python 3.9+ (plus Homebrew on Unix or WinGet on Windows) when missing, and by default installs the cockpit (core + cockpit + terminal profiles). This feasibility review predates those install-by-default launchers and the native Windows herdr/OMP release downloads; signed/pinned distribution bundles and interactive desktop/hardware acceptance remain work items.
 
 Homebrew on Linux minimizes package-name drift for the CLI prototype but requires supported glibc/platforms and build prerequisites. It is not a promise of every Linux distribution or musl support. Compare mise-backed binary distribution before making this permanent. [Homebrew Linux](https://docs.brew.sh/Homebrew-on-Linux), [mise Aqua](https://mise.jdx.dev/dev-tools/backends/aqua.html)

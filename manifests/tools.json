@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "tools": [
     {
       "id": "git",
@@ -7,13 +7,16 @@
       "profile": "core",
       "platforms": {
         "macos": {
-          "package": "git"
+          "package": "git",
+          "adapter": "brew"
         },
         "linux": {
-          "package": "git"
+          "package": "git",
+          "adapter": "brew"
         },
         "windows": {
-          "package": "Git.Git"
+          "package": "Git.Git",
+          "adapter": "winget"
         }
       }
     },
@@ -23,13 +26,16 @@
       "profile": "core",
       "platforms": {
         "macos": {
-          "package": "gh"
+          "package": "gh",
+          "adapter": "brew"
         },
         "linux": {
-          "package": "gh"
+          "package": "gh",
+          "adapter": "brew"
         },
         "windows": {
-          "package": "GitHub.cli"
+          "package": "GitHub.cli",
+          "adapter": "winget"
         }
       }
     },
@@ -39,13 +45,16 @@
       "profile": "core",
       "platforms": {
         "macos": {
-          "package": "ripgrep"
+          "package": "ripgrep",
+          "adapter": "brew"
         },
         "linux": {
-          "package": "ripgrep"
+          "package": "ripgrep",
+          "adapter": "brew"
         },
         "windows": {
-          "package": "BurntSushi.ripgrep.MSVC"
+          "package": "BurntSushi.ripgrep.MSVC",
+          "adapter": "winget"
         }
       }
     },
@@ -55,13 +64,16 @@
       "profile": "core",
       "platforms": {
         "macos": {
-          "package": "fd"
+          "package": "fd",
+          "adapter": "brew"
         },
         "linux": {
-          "package": "fd"
+          "package": "fd",
+          "adapter": "brew"
         },
         "windows": {
-          "package": "sharkdp.fd"
+          "package": "sharkdp.fd",
+          "adapter": "winget"
         }
       }
     },
@@ -71,13 +83,16 @@
       "profile": "core",
       "platforms": {
         "macos": {
-          "package": "fzf"
+          "package": "fzf",
+          "adapter": "brew"
         },
         "linux": {
-          "package": "fzf"
+          "package": "fzf",
+          "adapter": "brew"
         },
         "windows": {
-          "package": "junegunn.fzf"
+          "package": "junegunn.fzf",
+          "adapter": "winget"
         }
       }
     },
@@ -87,13 +102,16 @@
       "profile": "core",
       "platforms": {
         "macos": {
-          "package": "zoxide"
+          "package": "zoxide",
+          "adapter": "brew"
         },
         "linux": {
-          "package": "zoxide"
+          "package": "zoxide",
+          "adapter": "brew"
         },
         "windows": {
-          "package": "ajeetdsouza.zoxide"
+          "package": "ajeetdsouza.zoxide",
+          "adapter": "winget"
         }
       }
     },
@@ -103,13 +121,16 @@
       "profile": "core",
       "platforms": {
         "macos": {
-          "package": "lazygit"
+          "package": "lazygit",
+          "adapter": "brew"
         },
         "linux": {
-          "package": "lazygit"
+          "package": "lazygit",
+          "adapter": "brew"
         },
         "windows": {
-          "package": "JesseDuffield.lazygit"
+          "package": "JesseDuffield.lazygit",
+          "adapter": "winget"
         }
       }
     },
@@ -119,13 +140,16 @@
       "profile": "core",
       "platforms": {
         "macos": {
-          "package": "git-delta"
+          "package": "git-delta",
+          "adapter": "brew"
         },
         "linux": {
-          "package": "git-delta"
+          "package": "git-delta",
+          "adapter": "brew"
         },
         "windows": {
-          "package": "dandavison.delta"
+          "package": "dandavison.delta",
+          "adapter": "winget"
         }
       }
     },
@@ -135,13 +159,16 @@
       "profile": "core",
       "platforms": {
         "macos": {
-          "package": "yazi"
+          "package": "yazi",
+          "adapter": "brew"
         },
         "linux": {
-          "package": "yazi"
+          "package": "yazi",
+          "adapter": "brew"
         },
         "windows": {
-          "package": "sxyazi.yazi"
+          "package": "sxyazi.yazi",
+          "adapter": "winget"
         }
       }
     },
@@ -151,13 +178,16 @@
       "profile": "core",
       "platforms": {
         "macos": {
-          "package": "starship"
+          "package": "starship",
+          "adapter": "brew"
         },
         "linux": {
-          "package": "starship"
+          "package": "starship",
+          "adapter": "brew"
         },
         "windows": {
-          "package": "Starship.Starship"
+          "package": "Starship.Starship",
+          "adapter": "winget"
         }
       }
     },
@@ -167,13 +197,16 @@
       "profile": "core",
       "platforms": {
         "macos": {
-          "package": "mise"
+          "package": "mise",
+          "adapter": "brew"
         },
         "linux": {
-          "package": "mise"
+          "package": "mise",
+          "adapter": "brew"
         },
         "windows": {
-          "package": "jdx.mise"
+          "package": "jdx.mise",
+          "adapter": "winget"
         }
       }
     },
@@ -183,13 +216,16 @@
       "profile": "cockpit",
       "platforms": {
         "macos": {
-          "package": "herdr"
+          "adapter": "release",
+          "source": "herdr"
         },
         "linux": {
-          "package": "herdr"
+          "adapter": "release",
+          "source": "herdr"
         },
         "windows": {
-          "manual": "Install the stable native build: https://herdr.dev/docs/install/ (automated adapter pending)"
+          "adapter": "release",
+          "source": "herdr"
         }
       }
     },
@@ -199,13 +235,16 @@
       "profile": "cockpit",
       "platforms": {
         "macos": {
-          "package": "can1357/tap/omp"
+          "adapter": "release",
+          "source": "omp"
         },
         "linux": {
-          "package": "can1357/tap/omp"
+          "adapter": "release",
+          "source": "omp"
         },
         "windows": {
-          "manual": "Install the official native build: https://github.com/can1357/oh-my-pi#install (automated adapter pending)"
+          "adapter": "release",
+          "source": "omp"
         }
       }
     },
@@ -216,10 +255,11 @@
       "platforms": {
         "macos": {
           "package": "ghostty",
-          "cask": true
+          "cask": true,
+          "adapter": "brew"
         },
         "linux": {
-          "manual": "Use the package for your distro: https://ghostty.org/docs/install/binary (adapter pending)"
+          "adapter": "ghostty-linux"
         },
         "windows": null
       }
@@ -232,7 +272,8 @@
         "macos": null,
         "linux": null,
         "windows": {
-          "package": "wez.wezterm"
+          "package": "wez.wezterm",
+          "adapter": "winget"
         }
       }
     },
@@ -242,13 +283,191 @@
       "profile": "history",
       "platforms": {
         "macos": {
-          "package": "atuin"
+          "package": "atuin",
+          "adapter": "brew"
         },
         "linux": {
-          "package": "atuin"
+          "package": "atuin",
+          "adapter": "brew"
         },
         "windows": {
-          "package": "Atuinsh.Atuin"
+          "package": "Atuinsh.Atuin",
+          "adapter": "winget"
+        }
+      }
+    },
+    {
+      "id": "bat",
+      "binary": "bat",
+      "profile": "core",
+      "platforms": {
+        "macos": {
+          "adapter": "brew",
+          "package": "bat"
+        },
+        "linux": {
+          "adapter": "brew",
+          "package": "bat"
+        },
+        "windows": {
+          "adapter": "winget",
+          "package": "sharkdp.bat"
+        }
+      }
+    },
+    {
+      "id": "eza",
+      "binary": "eza",
+      "profile": "core",
+      "platforms": {
+        "macos": {
+          "adapter": "brew",
+          "package": "eza"
+        },
+        "linux": {
+          "adapter": "brew",
+          "package": "eza"
+        },
+        "windows": {
+          "adapter": "winget",
+          "package": "eza-community.eza"
+        }
+      }
+    },
+    {
+      "id": "jq",
+      "binary": "jq",
+      "profile": "core",
+      "platforms": {
+        "macos": {
+          "adapter": "brew",
+          "package": "jq"
+        },
+        "linux": {
+          "adapter": "brew",
+          "package": "jq"
+        },
+        "windows": {
+          "adapter": "winget",
+          "package": "jqlang.jq"
+        }
+      }
+    },
+    {
+      "id": "uv",
+      "binary": "uv",
+      "profile": "core",
+      "platforms": {
+        "macos": {
+          "adapter": "brew",
+          "package": "uv"
+        },
+        "linux": {
+          "adapter": "brew",
+          "package": "uv"
+        },
+        "windows": {
+          "adapter": "winget",
+          "package": "astral-sh.uv"
+        }
+      }
+    },
+    {
+      "id": "direnv",
+      "binary": "direnv",
+      "profile": "core",
+      "platforms": {
+        "macos": {
+          "adapter": "brew",
+          "package": "direnv"
+        },
+        "linux": {
+          "adapter": "brew",
+          "package": "direnv"
+        },
+        "windows": null
+      }
+    },
+    {
+      "id": "btop",
+      "binary": "btop",
+      "profile": "extras",
+      "platforms": {
+        "macos": {
+          "adapter": "brew",
+          "package": "btop"
+        },
+        "linux": {
+          "adapter": "brew",
+          "package": "btop"
+        },
+        "windows": null
+      }
+    },
+    {
+      "id": "zsh-autosuggestions",
+      "binary": null,
+      "profile": "core",
+      "platforms": {
+        "macos": {
+          "adapter": "brew",
+          "package": "zsh-autosuggestions"
+        },
+        "linux": {
+          "adapter": "brew",
+          "package": "zsh-autosuggestions"
+        },
+        "windows": null
+      }
+    },
+    {
+      "id": "zsh-syntax-highlighting",
+      "binary": null,
+      "profile": "core",
+      "platforms": {
+        "macos": {
+          "adapter": "brew",
+          "package": "zsh-syntax-highlighting"
+        },
+        "linux": {
+          "adapter": "brew",
+          "package": "zsh-syntax-highlighting"
+        },
+        "windows": null
+      }
+    },
+    {
+      "id": "bash-completion",
+      "binary": null,
+      "profile": "core",
+      "platforms": {
+        "macos": {
+          "adapter": "brew",
+          "package": "bash-completion@2"
+        },
+        "linux": {
+          "adapter": "brew",
+          "package": "bash-completion@2"
+        },
+        "windows": null
+      }
+    },
+    {
+      "id": "nerd-font",
+      "binary": null,
+      "profile": "terminal",
+      "platforms": {
+        "macos": {
+          "adapter": "font",
+          "source": "font"
+        },
+        "linux": {
+          "adapter": "font",
+          "source": "font"
+        },
+        "windows": {
+          "adapter": "font",
+          "source": "font"
         }
       }
     }

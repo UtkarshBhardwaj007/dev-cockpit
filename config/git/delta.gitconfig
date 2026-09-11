@@ -1,0 +1,18 @@
+# Used by the dg helper through `git -c include.path=...`; existing global
+# pager, signing, credentials, SSH and Git aliases are never replaced.
+[core]
+    pager = delta
+[interactive]
+    diffFilter = delta --color-only
+[delta]
+    navigate = true
+    side-by-side = true
+    line-numbers = true
+    dark = true
+    minus-style = syntax "#30212e"
+    plus-style = syntax "#26342d"
+    line-numbers-minus-style = "#f38ba8"
+    line-numbers-plus-style = "#a6e3a1"
+    line-numbers-zero-style = "#6c7086"
+    file-style = bold "#cba6f7"
+    hunk-header-style = file line-number syntax

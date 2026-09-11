@@ -1,0 +1,135 @@
+{
+  "schema_version": 1,
+  "verified_at": "2026-09-10",
+  "sources": {
+    "herdr": {
+      "repository": "herdrdev/herdr",
+      "version": "v0.9.0",
+      "assets": {
+        "herdr-linux-aarch64": {
+          "url": "https://github.com/herdrdev/herdr/releases/download/v0.9.0/herdr-linux-aarch64",
+          "sha256": "9c8db20fb7e7427b138d5367113f1621ffd319f2f65d6f009e2594029115f0d2"
+        },
+        "herdr-linux-x86_64": {
+          "url": "https://github.com/herdrdev/herdr/releases/download/v0.9.0/herdr-linux-x86_64",
+          "sha256": "4fa1a01158dd8043da92d31b270780b0dcc10603038d9b61cac4d81ab63fb71f"
+        },
+        "herdr-macos-aarch64": {
+          "url": "https://github.com/herdrdev/herdr/releases/download/v0.9.0/herdr-macos-aarch64",
+          "sha256": "32b53df09872628059c789a69f02a6b8e29e14ddf26711421f3463f70c1aef17"
+        },
+        "herdr-macos-x86_64": {
+          "url": "https://github.com/herdrdev/herdr/releases/download/v0.9.0/herdr-macos-x86_64",
+          "sha256": "d0c920b2a126a74809fa1491411c9a097a44786cac9c2ca51b818a995581cf16"
+        },
+        "herdr-windows-x86_64.zip": {
+          "url": "https://github.com/herdrdev/herdr/releases/download/v0.9.0/herdr-windows-x86_64.zip",
+          "sha256": "b4508c445de1c1a68c760a01735da2aba2fa214b2aafd4b07f732e49b2a64b11"
+        }
+      }
+    },
+    "omp": {
+      "repository": "can1357/oh-my-pi",
+      "version": "v18.1.16",
+      "assets": {
+        "omp-browser-relay-extension.zip": {
+          "url": "https://github.com/can1357/oh-my-pi/releases/download/v18.1.16/omp-browser-relay-extension.zip",
+          "sha256": "a87a400e0d66ce35aeb93576780b56e401e7d41831493cfb939622d1b3fc33cf"
+        },
+        "omp-darwin-arm64": {
+          "url": "https://github.com/can1357/oh-my-pi/releases/download/v18.1.16/omp-darwin-arm64",
+          "sha256": "99eed6d45d984d2f13d76832f78782b9aa07862921ab4e98e2d8e31ca8129795"
+        },
+        "omp-darwin-x64": {
+          "url": "https://github.com/can1357/oh-my-pi/releases/download/v18.1.16/omp-darwin-x64",
+          "sha256": "78b11d4a9f5884e18589d2a8b10e328f696d5b7da1f6fe46f289bb80f55ffddf"
+        },
+        "omp-linux-arm64": {
+          "url": "https://github.com/can1357/oh-my-pi/releases/download/v18.1.16/omp-linux-arm64",
+          "sha256": "d8612389c7af3cf3b69609c9149bff3cf07dcb65774b231d9dc4966b176b9720"
+        },
+        "omp-linux-musl-arm64": {
+          "url": "https://github.com/can1357/oh-my-pi/releases/download/v18.1.16/omp-linux-musl-arm64",
+          "sha256": "f219439bc19ad95d0ee9caa595bae16ab309015b3b2561fe184cc9b7207b6736"
+        },
+        "omp-linux-musl-x64": {
+          "url": "https://github.com/can1357/oh-my-pi/releases/download/v18.1.16/omp-linux-musl-x64",
+          "sha256": "73eeef0bf5a42b80bb5e6f1251ddbe9096f0630093c78a671ec7f41ca6dcbf5d"
+        },
+        "omp-linux-x64": {
+          "url": "https://github.com/can1357/oh-my-pi/releases/download/v18.1.16/omp-linux-x64",
+          "sha256": "efebefb74359d20362e07341f01a65fc0a259e7bc79454ef08b0ebf5232ab897"
+        },
+        "omp-windows-arm64.exe": {
+          "url": "https://github.com/can1357/oh-my-pi/releases/download/v18.1.16/omp-windows-arm64.exe",
+          "sha256": "6efef231385d6094a014143958209ee254696d5655501af6cb2198404df18bbb"
+        },
+        "omp-windows-x64.exe": {
+          "url": "https://github.com/can1357/oh-my-pi/releases/download/v18.1.16/omp-windows-x64.exe",
+          "sha256": "5bfee6a757f7dcced7cd2128d15a6d717839636ce3fa82f8df167eaaab906be1"
+        }
+      }
+    },
+    "font": {
+      "repository": "ryanoasis/nerd-fonts",
+      "version": "v3.5.1",
+      "assets": {
+        "JetBrainsMono.zip": {
+          "url": "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.5.1/JetBrainsMono.zip",
+          "sha256": "fab782a66f7d3019da64f6572db9fc5d3a4bcb19f9fa13e2d8a62e3693d6396e"
+        }
+      }
+    },
+    "ghostty-deb": {
+      "repository": "mkasberg/ghostty-ubuntu",
+      "version": "1.3.1-0-ppa2",
+      "assets": {
+        "ghostty_1.3.1-0.ppa2_amd64_24.04.deb": {
+          "url": "https://github.com/mkasberg/ghostty-ubuntu/releases/download/1.3.1-0-ppa2/ghostty_1.3.1-0.ppa2_amd64_24.04.deb",
+          "sha256": "478d440153ef544426418efc7d6d8901715359f452c46be29071901a94b8cd47"
+        },
+        "ghostty_1.3.1-0.ppa2_amd64_25.10.deb": {
+          "url": "https://github.com/mkasberg/ghostty-ubuntu/releases/download/1.3.1-0-ppa2/ghostty_1.3.1-0.ppa2_amd64_25.10.deb",
+          "sha256": "793bde1c31163d8e1d12ea939c8b941f7908170e57bbf19b121434a0f6621c59"
+        },
+        "ghostty_1.3.1-0.ppa2_amd64_26.04.deb": {
+          "url": "https://github.com/mkasberg/ghostty-ubuntu/releases/download/1.3.1-0-ppa2/ghostty_1.3.1-0.ppa2_amd64_26.04.deb",
+          "sha256": "653fa1819b4d9d592184472b0303f06b3e1b21b2e3502858d128abf17fe7965c"
+        },
+        "ghostty_1.3.1-0.ppa2_amd64_forky.deb": {
+          "url": "https://github.com/mkasberg/ghostty-ubuntu/releases/download/1.3.1-0-ppa2/ghostty_1.3.1-0.ppa2_amd64_forky.deb",
+          "sha256": "d4f9207423ea7957344430a729b52edb13aff620fb27fe69434ed1d8dc80f880"
+        },
+        "ghostty_1.3.1-0.ppa2_amd64_trixie.deb": {
+          "url": "https://github.com/mkasberg/ghostty-ubuntu/releases/download/1.3.1-0-ppa2/ghostty_1.3.1-0.ppa2_amd64_trixie.deb",
+          "sha256": "9fda8e418d7a7f58149ba3ba823a255d6b80f8bb5431b3bd7e912ff597715b2e"
+        },
+        "ghostty_1.3.1-0.ppa2_arm64_24.04.deb": {
+          "url": "https://github.com/mkasberg/ghostty-ubuntu/releases/download/1.3.1-0-ppa2/ghostty_1.3.1-0.ppa2_arm64_24.04.deb",
+          "sha256": "91063815b6ce3d834d59714b4ad0310f744448b6716836d035b3d331d1923363"
+        },
+        "ghostty_1.3.1-0.ppa2_arm64_25.10.deb": {
+          "url": "https://github.com/mkasberg/ghostty-ubuntu/releases/download/1.3.1-0-ppa2/ghostty_1.3.1-0.ppa2_arm64_25.10.deb",
+          "sha256": "c6a4fd4fd786b4bdea42036650ef1724f535c4b636329f488f7ece36820d3d6b"
+        },
+        "ghostty_1.3.1-0.ppa2_arm64_26.04.deb": {
+          "url": "https://github.com/mkasberg/ghostty-ubuntu/releases/download/1.3.1-0-ppa2/ghostty_1.3.1-0.ppa2_arm64_26.04.deb",
+          "sha256": "a8128fe0106ddb803e29ad716b9ca0547fa13e45c2f7ff284ec7f6a14d97192d"
+        },
+        "ghostty_1.3.1-0.ppa2_arm64_forky.deb": {
+          "url": "https://github.com/mkasberg/ghostty-ubuntu/releases/download/1.3.1-0-ppa2/ghostty_1.3.1-0.ppa2_arm64_forky.deb",
+          "sha256": "c5591b353cb54431aab015acb5056cc9713b9149ba112ee0e0be6b08699e3bb3"
+        },
+        "ghostty_1.3.1-0.ppa2_arm64_trixie.deb": {
+          "url": "https://github.com/mkasberg/ghostty-ubuntu/releases/download/1.3.1-0-ppa2/ghostty_1.3.1-0.ppa2_arm64_trixie.deb",
+          "sha256": "73f384e62c419d7a7809d686bf579fea5e23f52742b34f70c74d6adf0e72f8ab"
+        }
+      }
+    },
+    "homebrew": {
+      "version": "641127e1d6a9b5fd01dd4582abe174b7a4069bba",
+      "url": "https://raw.githubusercontent.com/Homebrew/install/641127e1d6a9b5fd01dd4582abe174b7a4069bba/install.sh",
+      "sha256": "12479a24be3f5307eecac7cde670fad7118640f031229e964f544b1367b52a41"
+    }
+  }
+}

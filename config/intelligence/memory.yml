@@ -1,0 +1,10 @@
+# Used only when this project's memory is enabled and OMP is launched by dev.
+# Storage is local. Extraction/consolidation use the configured OMP model.
+memory:
+  backend: local
+autolearn:
+  enabled: true
+memories:
+  maxRolloutsPerStartup: 8
+  stage1Concurrency: 2
+  summaryInjectionTokenLimit: 3000
