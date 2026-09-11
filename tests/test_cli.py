@@ -68,10 +68,10 @@ class CliSetupTests(unittest.TestCase):
     def test_setup_install_generates_completions(self, gen, run):
         with unittest.mock.patch.dict(os.environ, {"HOME": str(self.home)}):
             code = cli._setup(["--install"])
+            gen.assert_called_with(Path.home(), cli.host_platform(), use_environment=True, force=False)
         self.assertEqual(code, 0)
         run.assert_called_once()
         gen.assert_called_once()
-        gen.assert_called_with(self.home, cli.host_platform(), use_environment=True, force=False)
 
     @unittest.mock.patch("dev_cockpit.cli.packages.run_packages", return_value=[])
     @unittest.mock.patch("dev_cockpit.cli.configuration.generate_completions", return_value=[])
@@ -103,7 +103,15 @@ class RuntimeDeployTests(unittest.TestCase):
         env = {"HOME": str(self.home)}
         if deploy_env:
             env["DEV_COCKPIT_DEPLOY_RUNTIME"] = "1"
-        return unittest.mock.patch.dict(os.environ, env)
+
+        @contextlib.contextmanager
+        def _patched_env():
+            with unittest.mock.patch.dict(os.environ, env):
+                os.environ.pop("XDG_CONFIG_HOME", None)
+                os.environ.pop("APPDATA", None)
+                yield
+
+        return _patched_env()
 
     @unittest.mock.patch("dev_cockpit.cli.packages.run_packages", return_value=[])
     @unittest.mock.patch("dev_cockpit.cli.runtime.deploy_runtime")
@@ -113,9 +121,13 @@ class RuntimeDeployTests(unittest.TestCase):
         deploy.return_value = ROOT
         with self._install(deploy_env=True):
             code = cli._setup(["--install", "--apply-config"])
+            target = cli.host_platform()
+            home = Path.home() if target == "windows" else self.home
+            _, ledger = cli.configuration.config_targets(home, target, use_environment=True)
+            env_name = "environment.ps1" if target == "windows" else "environment.sh"
+            env = (ledger.parent / env_name).read_text()
         self.assertEqual(code, 0)
         deploy.assert_called_once()
-        env = (self.home / ".config/dev-cockpit/environment.sh").read_text()
         self.assertIn("DEV_COCKPIT_ROOT=" + str(ROOT), env)
 
     @unittest.mock.patch("dev_cockpit.cli.packages.run_packages", return_value=[])

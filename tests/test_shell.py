@@ -80,6 +80,7 @@ class ShellTests(unittest.TestCase):
             self.assertIn('personal-function', result.stdout)
             self.assertNotIn('ARGUMENTS=', result.stdout)
 
+    @unittest.skipIf(os.name == 'nt', 'POSIX dash sourcing is not meaningful under MSYS path conventions; Windows shell integration is PowerShell (covered by the nt-gated test)')
     def test_interactive_posix_shell_ignores_bash_zsh_integration(self):
         executable = shutil.which('dash')
         if not executable:
@@ -120,6 +121,7 @@ class ShellTests(unittest.TestCase):
         self.assertIn('FZF=--height=25%', result.stdout)
         self.assertIn('CTRLT=\n', result.stdout)
 
+    @unittest.skipIf(os.name == 'nt', 'The yazi cd helper is a POSIX shell feature; Windows shell integration is PowerShell (covered by the nt-gated test)')
     def test_yazi_helper_changes_current_shell_directory(self):
         destination = self.base / "selected directory ' quote"
         destination.mkdir()

@@ -1,12 +1,13 @@
 """Coverage for download/extract safety branches not exercised via packages."""
 import io
+import os
 import stat
 import sys
 import tarfile
 import tempfile
 import unittest
 import zipfile
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -16,8 +17,8 @@ from dev_cockpit.downloads import _safe_name, extract_archive  # noqa: E402
 
 class SafeNameTests(unittest.TestCase):
     def test_accepts_safe_relative_paths(self):
-        self.assertEqual(_safe_name("dir/file.txt"), Path("dir/file.txt"))
-        self.assertEqual(_safe_name("file.txt"), Path("file.txt"))
+        self.assertEqual(_safe_name("dir/file.txt"), PurePosixPath("dir/file.txt"))
+        self.assertEqual(_safe_name("file.txt"), PurePosixPath("file.txt"))
 
     def test_rejects_absolute_traversal_and_drive(self):
         for bad in ("/etc/passwd", "a/../b", "../escape", "C:/Windows/x", "a\\..\\b"):
@@ -46,7 +47,8 @@ class ExtractArchiveTests(unittest.TestCase):
             target = dest / "bin/tool"
             self.assertTrue(target.is_file())
             self.assertEqual(target.read_bytes(), b"#!/bin/sh\necho hi\n")
-            self.assertTrue(target.stat().st_mode & 0o100)  # owner-execute preserved
+            if os.name != "nt":
+                self.assertTrue(target.stat().st_mode & 0o100)  # owner-execute preserved
 
     def test_tar_rejects_symlink(self):
         with tempfile.TemporaryDirectory(prefix="dc-tarlink ") as tmp:
