@@ -128,7 +128,10 @@ class RuntimeDeployTests(unittest.TestCase):
             env = (ledger.parent / env_name).read_text()
         self.assertEqual(code, 0)
         deploy.assert_called_once()
-        self.assertIn("DEV_COCKPIT_ROOT=" + str(ROOT), env)
+        if target == "windows":
+            self.assertIn("$env:DEV_COCKPIT_ROOT = " + cli.configuration._quote_ps(str(ROOT)), env)
+        else:
+            self.assertIn("DEV_COCKPIT_ROOT=" + str(ROOT), env)
 
     @unittest.mock.patch("dev_cockpit.cli.packages.run_packages", return_value=[])
     @unittest.mock.patch("dev_cockpit.cli.runtime.deploy_runtime")
