@@ -1,0 +1,12 @@
+# Local history only. No account, import, daemon or network sync is enabled.
+auto_sync = false
+update_check = false
+search_mode = "fuzzy"
+filter_mode = "directory"
+style = "compact"
+inline_height = 20
+show_help = true
+secrets_filter = true
+
+[daemon]
+enabled = false

@@ -5,7 +5,7 @@ This is a bootstrap prototype, not the completed environment described in the or
 ## Automated scope
 
 - Python installer tests: preview is read-only, platform selection, profile validation, preservation of existing/edited config, symlink rejection, idempotent apply, ownership-aware uninstall, failed command handling.
-- Native GitHub Actions runners: macOS, Ubuntu, Windows; Python tests, local entrypoint preview, and published URL preview after a main-branch push.
+- Native GitHub Actions runners: macOS, Ubuntu, Windows; Python tests, local entrypoint preview, and an install smoke test of the published one-liner after a main-branch push.
 - Theme TOML is parsed, and vendored files are tied to upstream revisions/licenses.
 
 The CI preview does not install the entire package stack. Config integration uses temporary homes. Green CI is not evidence that a GUI, hardware key or authenticated agent works.
@@ -14,7 +14,7 @@ The CI preview does not install the entire package stack. Config integration use
 
 1. Provision prerequisites from a fresh OS, with explicit supported distro/architecture versions.
 2. Pin installer bundles and tool versions, and verify downloaded release checksums/signatures.
-3. Add Linux Ghostty and native Windows Herdr/OMP installer adapters.
+3. Validate the implemented Linux Ghostty and native Windows Herdr/OMP installer adapters on real machines.
 4. Exercise real package installation on disposable machines, twice, including failure/retry and PATH refresh.
 5. Create Yazi + OMP + shell Herdr layout; verify startup, cwd, resize, focus, file opening, detach and reboot restore.
 6. Validate Ghostty/WezTerm fonts, key sequences, truecolor, clipboard and images on all three desktops.
