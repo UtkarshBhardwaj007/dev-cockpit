@@ -21,6 +21,13 @@ for _dc_bin in "${DEV_COCKPIT_USER_HOME:-$HOME}/.local/bin" "${DEV_COCKPIT_USER_
 done
 export PATH
 unset _dc_bin
+_dc_cockpit_files() {
+    if command -v fd >/dev/null 2>&1; then
+        fd --type f --hidden --exclude .git --exclude node_modules --exclude .venv
+    else
+        find . -type f -not -path '*/.git/*' -not -path '*/node_modules/*'
+    fi
+}
 _dev_cockpit() {
     if [ -z "${DEV_COCKPIT_ROOT:-}" ] || [ ! -f "$DEV_COCKPIT_ROOT/bootstrap/cockpit.py" ]; then
         printf '%s\n' 'Dev Cockpit runtime is missing. Rerun setup to repair it.' >&2
@@ -53,18 +60,50 @@ fi
 if command -v delta >/dev/null 2>&1; then
     command -v dg >/dev/null 2>&1 || function dg { git -c "include.path=$DEV_COCKPIT_CONFIG_DIR/delta.gitconfig" "$@"; }
 fi
+# A terminal editor makes yazi's `edit` opener and the fuzzy helpers useful.
+if [ -z "${EDITOR:-}" ]; then
+    for _dc_editor in nvim vim hx nano; do
+        if command -v "$_dc_editor" >/dev/null 2>&1; then EDITOR="$_dc_editor"; break; fi
+    done
+    [ -z "${EDITOR:-}" ] || export EDITOR
+fi
+[ -n "${EDITOR:-}" ] && [ -z "${VISUAL:-}" ] && export VISUAL="$EDITOR"
+unset _dc_editor
+# `y` runs yazi and adopts the directory you quit in. `q` writes the cwd file,
+# `Q` quits without changing the shell directory.
 if command -v yazi >/dev/null 2>&1; then
     command -v y >/dev/null 2>&1 || function y {
         local _dc_tmp _dc_cwd _dc_status
         _dc_tmp=$(mktemp "${TMPDIR:-/tmp}/dev-cockpit-yazi.XXXXXXXX") || return
-        yazi "$@" --cwd-file="$_dc_tmp"
+        command yazi "$@" --cwd-file="$_dc_tmp"
         _dc_status=$?
         if [ -s "$_dc_tmp" ]; then
             IFS= read -r _dc_cwd < "$_dc_tmp" || :
-            [ -z "$_dc_cwd" ] || [ ! -d "$_dc_cwd" ] || builtin cd -- "$_dc_cwd" || :
+            if [ -n "$_dc_cwd" ] && [ -d "$_dc_cwd" ] && [ "$_dc_cwd" != "$PWD" ]; then
+                builtin cd -- "$_dc_cwd" || :
+            fi
         fi
-        rm -f -- "$_dc_tmp"
+        command rm -f -- "$_dc_tmp"
         return "$_dc_status"
+    }
+fi
+# Fuzzy file explorer: `fe` edits the pick, `fv` pages it with bat.
+if command -v fzf >/dev/null 2>&1; then
+    command -v fe >/dev/null 2>&1 || function fe {
+        local _dc_pick
+        _dc_pick=$(_dc_cockpit_files | fzf --height=80% --layout=reverse --border \
+            --preview 'bat --style=numbers,changes,header --color=always --line-range=:200 {} 2>/dev/null || cat {}' \
+            --preview-window 'right:60%:wrap' "$@") || return
+        [ -n "$_dc_pick" ] || return
+        "${EDITOR:-vi}" "$_dc_pick"
+    }
+    command -v fv >/dev/null 2>&1 || function fv {
+        local _dc_pick
+        _dc_pick=$(_dc_cockpit_files | fzf --height=80% --layout=reverse --border \
+            --preview 'bat --style=numbers,changes,header --color=always --line-range=:200 {} 2>/dev/null || cat {}' \
+            --preview-window 'right:60%:wrap' "$@") || return
+        [ -n "$_dc_pick" ] || return
+        if command -v bat >/dev/null 2>&1; then bat --paging=always "$_dc_pick"; else cat "$_dc_pick"; fi
     }
 fi
 # Catppuccin Mocha, applied only when no user options were set.
@@ -135,7 +174,17 @@ fi
 if command -v atuin >/dev/null 2>&1 && [ "${DEV_COCKPIT_SKIP_ATUIN:-0}" != 1 ] && ! command -v _atuin_preexec >/dev/null 2>&1; then
     _dc_hook=$(atuin init "$_dc_shell" --disable-up-arrow 2>/dev/null) && eval "$_dc_hook"
 fi
-if command -v starship >/dev/null 2>&1 && [ "${DEV_COCKPIT_SKIP_STARSHIP:-0}" != 1 ] && [ -z "${STARSHIP_SESSION_KEY:-}" ]; then
+# Detect an already-active prompt hook instead of inheriting STARSHIP_SESSION_KEY,
+# which is exported by the parent shell and used to skip initialization in panes.
+_dc_starship_ready=0
+if [ -n "${ZSH_VERSION:-}" ]; then
+    case " ${precmd_functions[*]:-} " in *" starship_precmd "*) _dc_starship_ready=1 ;; esac
+    case " ${preexec_functions[*]:-} " in *" starship_preexec "*) _dc_starship_ready=1 ;; esac
+elif [ -n "${BASH_VERSION:-}" ]; then
+    case "${PROMPT_COMMAND:-}" in *starship*) _dc_starship_ready=1 ;; esac
+    command -v starship_precmd >/dev/null 2>&1 && _dc_starship_ready=1
+fi
+if command -v starship >/dev/null 2>&1 && [ "${DEV_COCKPIT_SKIP_STARSHIP:-0}" != 1 ] && [ "$_dc_starship_ready" = 0 ]; then
     if [ -z "${STARSHIP_CONFIG:-}" ] && [ ! -f "${XDG_CONFIG_HOME:-$HOME/.config}/starship.toml" ]; then
         export STARSHIP_CONFIG="$DEV_COCKPIT_CONFIG_DIR/starship.toml"
     fi
@@ -155,6 +204,6 @@ if [ "$_dc_shell" = zsh ]; then
     fi
     unset _dc_plugin
 fi
-unset _dc_hook _dc_shell
+unset _dc_hook _dc_shell _dc_starship_ready
 # Missing or old optional integrations never make profile initialization fail.
 :

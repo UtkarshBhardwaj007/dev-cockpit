@@ -4,12 +4,13 @@
 
 The repo applies the Catppuccin Mocha palette across the shell toolchain. Where each piece is configured:
 
-- **yazi** — vendored Catppuccin Mocha (mauve accent) theme from the Catppuccin yazi port (`config/yazi/theme.toml`).
-- **starship** — the Catppuccin Powerline preset from the Starship presets gallery (`config/starship/starship.toml`).
+- **starship** — the Catppuccin Powerline preset from the Starship presets gallery (`config/starship/starship.toml`), extended with `git_state`, `docker_context`, `status`, `jobs` and an SSH-only `hostname` segment.
 - **Ghostty** — built-in `Catppuccin Mocha` terminal theme (`config/terminals/ghostty`).
 - **WezTerm** — `Catppuccin Mocha` color scheme (`config/terminals/wezterm.lua`).
 - **OMP** — built-in dark/light catppuccin scheme (`config/omp/config.yml`).
-- **Herdr** — built-in `catppuccin` scheme (`config/herdr/config.toml`).
+- **Herdr** — built-in `catppuccin` scheme plus Mocha token overrides, pane gaps, a wider sidebar and a richer tab bar (`config/herdr/config.toml`).
+- **bat** — built-in `Catppuccin Mocha` theme with grid/changes and italic text (`config/bat/config`).
+- **yazi** — vendored Catppuccin Mocha (mauve accent) theme from the Catppuccin yazi port (`config/yazi/theme.toml`), plus `bat`-paged openers and explicit keybindings (`config/yazi/yazi.toml`, `config/yazi/keymap.toml`).
 
 Canonical sources to check online:
 

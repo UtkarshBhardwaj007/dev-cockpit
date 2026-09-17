@@ -28,7 +28,7 @@ class LauncherTests(unittest.TestCase):
     @unittest.skipIf(os.name == 'nt', 'Native Unix launcher')
     def test_unix_defaults_to_install_and_configure(self):
         result = subprocess.run(['sh', str(self.bootstrap / 'setup.sh')], text=True, capture_output=True)
-        self.assertEqual(self.recorded(result), ['--install', '--apply-config'])
+        self.assertEqual(self.recorded(result), ['--install', '--apply-config', '--force-config'])
 
     @unittest.skipIf(os.name == 'nt', 'Native Unix launcher')
     def test_unix_dry_run_and_space_arguments_are_preserved(self):
@@ -40,7 +40,12 @@ class LauncherTests(unittest.TestCase):
     @unittest.skipIf(os.name == 'nt', 'Native Unix launcher')
     def test_unix_action_flag_does_not_silently_install(self):
         result = subprocess.run(['sh', str(self.bootstrap / 'setup.sh'), '--apply-config'], text=True, capture_output=True)
-        self.assertEqual(self.recorded(result), ['--apply-config'])
+        self.assertEqual(self.recorded(result), ['--apply-config', '--force-config'])
+
+    @unittest.skipIf(os.name == 'nt', 'Native Unix launcher')
+    def test_unix_explicit_force_config_is_not_duplicated(self):
+        result = subprocess.run(['sh', str(self.bootstrap / 'setup.sh'), '--apply-config', '--force-config'], text=True, capture_output=True)
+        self.assertEqual(self.recorded(result), ['--apply-config', '--force-config'])
 
     def test_powershell_dry_run_mapping_and_quoting(self):
         shell = shutil.which('pwsh') or (shutil.which('powershell') if os.name == 'nt' else None)

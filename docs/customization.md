@@ -38,9 +38,13 @@ This writes an OMP extension; the upstream documentation explains its location a
 
 Run `dev open .` from a project to create (or reuse) a Herdr workspace with OMP, Yazi and a shell pane, or start `herdr` directly and open a workspace yourself. Yazi does not automatically follow another pane's cwd. Keep `omp` directly available when diagnosing the multiplexer.
 
+Inside Yazi, `Enter` opens text and code files in `$EDITOR` (set to `nvim`, `vim`, `hx` or `nano` when the variable is unset), `b` opens the interactive opener chooser (`bat`, editor, reveal), `q` quits and changes the shell directory, and `Q` quits without changing it. The `fe` and `fv` shell helpers use `fzf` with a `bat` preview to edit or page a file from anywhere.
+
 ## Theme and existing configuration
 
-The installer stores its Starship config under the platform config directory's `dev-cockpit` folder, selected by `STARSHIP_CONFIG`. Ghostty, WezTerm, Herdr and Yazi use their ordinary config locations; existing files are skipped. Merge the relevant settings manually if you already have custom configs.
+The installer stores its Starship config under the platform config directory's `dev-cockpit` folder, selected by `STARSHIP_CONFIG`. Ghostty, WezTerm, Herdr and Yazi use their ordinary config locations.
+
+`dev`, `dev-update` and the one-line launchers repair every file this project created, even if it was edited afterwards (Herdr rewrites its own `config.toml`, for example). The previous content is backed up under `dev-cockpit/backups` before each repair. Files you created yourself are never touched, so a personal `~/.config/starship.toml` or `~/Library/Application Support/com.mitchellh.ghostty/config.ghostty` stays yours. Direct `python3 bootstrap/cockpit.py --apply-config` remains the conservative mode that preserves edited files; add `--force-config` to repair.
 
 The initial palette is Catppuccin Mocha. In Starship, change the palette to `catppuccin_latte` for light mode. Ghostty/WezTerm/Herdr have matching built-in themes; Yazi needs the corresponding licensed theme asset. Editing an installed file hands control back to you: future applies preserve it. Change the repository source to update an unedited managed file.
 

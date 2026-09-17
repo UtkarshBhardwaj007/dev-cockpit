@@ -3,13 +3,18 @@
 set -eu
 mutate=1
 has_action=0
+force=0
 for argument in "$@"; do
     case "$argument" in
         --dry-run|--doctor|--help|-h|--uninstall-config) mutate=0; has_action=1 ;;
         --install|--apply-config|--activate-shell) has_action=1 ;;
+        --force-config) force=1 ;;
     esac
 done
 if [ "$has_action" -eq 0 ]; then set -- --install --apply-config "$@"; fi
+# Repair project-created config by default so one command lands every update.
+# Files the user created themselves are still never touched.
+if [ "$mutate" -eq 1 ] && [ "$force" -eq 0 ]; then set -- "$@" --force-config; fi
 # Refresh paths without modifying any shell/profile files.
 PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/home/linuxbrew/.linuxbrew/bin:$PATH"
 export PATH

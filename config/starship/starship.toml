@@ -9,6 +9,7 @@ $directory\
 [](bg:yellow fg:peach)\
 $git_branch\
 $git_status\
+$git_state\
 [](fg:yellow bg:green)\
 $c\
 $rust\
@@ -22,9 +23,12 @@ $haskell\
 $python\
 [](fg:green bg:sapphire)\
 $conda\
+$docker_context\
 [](fg:sapphire bg:lavender)\
 $time\
 [ ](fg:lavender)\
+$status\
+$jobs\
 $cmd_duration\
 $line_break\
 $character"""
@@ -283,3 +287,24 @@ surface0 = "#363a4f"
 base = "#24273a"
 mantle = "#1e2030"
 crust = "#181926"
+
+[git_state]
+style = "bg:yellow"
+format = '[[ \($state( $progress_current/$progress_total) ](fg:crust bg:yellow)]($style)'
+
+[status]
+disabled = false
+style = "bold red"
+format = '[\[$status\]]($style) '
+
+[jobs]
+disabled = false
+symbol = "+"
+style = "bold blue"
+format = '[\[$symbol$number\]]($style) '
+
+[hostname]
+disabled = false
+ssh_only = true
+style = "bg:red fg:crust"
+format = '[ $hostname ]($style)'

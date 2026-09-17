@@ -43,6 +43,7 @@ def _base_parser():
     parser.add_argument("--activate-shell", action="store_true", help="Ensure shell profile activation blocks exist (idempotent)")
     parser.add_argument("--uninstall-config", action="store_true", help="Remove unchanged project-owned config only; leave packages installed")
     parser.add_argument("--doctor", action="store_true", help="Check selected binaries on PATH and report config status")
+    parser.add_argument("--force-config", action="store_true", help="Repair project-created config even if edited (previous content is backed up)")
     return parser
 
 
@@ -75,10 +76,10 @@ def _setup(argv):
             parser.error("--doctor checks the host OS only")
         return packages.doctor(plan, home=home)
     if not args.uninstall_config and args.apply_config:
-        configuration.manage_config(home, target, apply=True, use_environment=not args.home, root=root)
+        configuration.manage_config(home, target, apply=True, use_environment=not args.home, root=root, force=args.force_config)
     elif args.activate_shell:
         # Idempotent: only creates/updates the owned shell activation blocks.
-        configuration.manage_config(home, target, apply=True, use_environment=not args.home, root=root)
+        configuration.manage_config(home, target, apply=True, use_environment=not args.home, root=root, force=args.force_config)
     packages.run_packages(plan, install=args.install, home=home)
     if args.uninstall_config:
         # apply=True is required: manage_config only performs removal when apply is set.
@@ -91,8 +92,9 @@ def _setup(argv):
 
 
 def _cmd_launch(argv):
-    # Full cockpit launch: install + configure on the host, safely.
-    return _setup(["--install", "--apply-config", *argv])
+    # Full cockpit launch: install + configure on the host, safely. Repair is the
+    # default so one command picks up every managed update, including Herdr.
+    return _setup(["--install", "--apply-config", "--force-config", *argv])
 
 
 def _cmd_doctor(argv):
@@ -120,7 +122,7 @@ def _cmd_update(argv):
     args = parser.parse_args(argv)
     home = args.home.absolute() if args.home else Path.home()
     target = host_platform()
-    configuration.manage_config(home, target, apply=True, use_environment=not args.home)
+    configuration.manage_config(home, target, apply=True, use_environment=not args.home, force=True)
     configuration.generate_completions(home, target, use_environment=not args.home, force=args.completions)
     plan = packages.package_plan(target, args.profile or list(DEFAULT_PROFILES))
     packages.run_packages(plan, install=True, home=home)

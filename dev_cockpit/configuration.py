@@ -116,6 +116,8 @@ def config_targets(home, target, use_environment=False):
         "config/herdr/config.toml": config / "herdr/config.toml",
         "config/omp/config.yml": home / ".omp/agent/config.yml",
         "config/yazi/theme.toml": config / ("yazi/config/theme.toml" if target == "windows" else "yazi/theme.toml"),
+        "config/yazi/yazi.toml": config / ("yazi/config/yazi.toml" if target == "windows" else "yazi/yazi.toml"),
+        "config/yazi/keymap.toml": config / ("yazi/config/keymap.toml" if target == "windows" else "yazi/keymap.toml"),
         "config/atuin/config.toml": atuin_config / "config.toml",
         "config/lazygit/config.yml": lazygit,
         "config/bat/config": config / "bat/config",
@@ -307,8 +309,13 @@ def _completion_removal_plan(directory):
     return changes
 
 
-def manage_config(home, target, apply=False, uninstall=False, use_environment=False, root=ROOT, python_executable=None):
-    """Preview/apply or remove only unchanged owned files and profile blocks."""
+def manage_config(home, target, apply=False, uninstall=False, use_environment=False, root=ROOT, python_executable=None, force=False):
+    """Preview/apply or remove only unchanged owned files and profile blocks.
+
+    With force=True, files this project created are repaired even when they were
+    edited afterwards; the previous content is backed up first. Files the user
+    created themselves are never touched, and profile blocks stay conservative.
+    """
     paths, ledger = config_targets(home, target, use_environment)
     profiles = profile_targets(home, target, use_environment)
     directory = ledger.parent
@@ -336,15 +343,18 @@ def manage_config(home, target, apply=False, uninstall=False, use_environment=Fa
                 elif key in state["files"]:
                     print("PRESERVE changed/missing file:", destination)
                 continue
-            # Interactive tools can modify their own settings. Never replace an
-            # existing OMP/Herdr file during a config update, even if unedited.
-            create_only = destination in (paths["config/omp/config.yml"], paths["config/herdr/config.toml"])
+            # OMP owns its config and may rewrite it at runtime, so never replace
+            # an existing OMP file. Herdr only rewrites config.toml when the user
+            # changes settings, which changes the hash and is preserved as edited.
+            create_only = destination == paths["config/omp/config.yml"]
             if current is None:
                 planned.append(("create", destination, desired, "files", digest(desired)))
             elif current == desired and owned:
                 pass
             elif owned and not create_only:
                 planned.append(("update", destination, desired, "files", digest(desired)))
+            elif force and not create_only and key in state["files"]:
+                planned.append(("repair", destination, desired, "files", digest(desired)))
             else:
                 print("PRESERVE existing/user-edited file:", destination)
         for destination, shell in profiles.items():

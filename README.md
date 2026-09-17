@@ -60,7 +60,7 @@ On Windows:
 & .\bootstrap\setup.ps1 -Doctor -Profile core,cockpit,terminal
 ```
 
-An existing file is preserved unless this project previously created it and its content has not been edited. Config application does not modify shell profiles, Git identity, SSH settings or agent credentials. Explicit shell activation is documented in [customization](docs/customization.md).
+A file this project created is repaired on every install, including when it was edited afterwards; the previous content is backed up under `dev-cockpit/backups`. Files you created yourself are never touched. Config application does not modify shell profiles, Git identity, SSH settings or agent credentials. Explicit shell activation is documented in [customization](docs/customization.md).
 
 | Profile | Contents | Default | Installer coverage |
 |---|---|---|---|
@@ -88,7 +88,9 @@ Open Ghostty (or another terminal) and start a new session so the shell function
 | `dev graph <subcommand> .` | Build or query the local code graph, e.g. `dev graph init .` |
 | `herdr` | Start the Herdr multiplexer directly |
 | `omp` | Start the OMP coding agent directly |
-| `yazi` / `y` | File manager; `y` returns to the directory you quit in |
+| `yazi` / `y` | File manager; `y` returns to the directory you quit in (`q`), `Q` quits without changing it |
+| `fe` | Fuzzy file picker with `bat` preview; opens the pick in `$EDITOR` |
+| `fv` | Fuzzy file picker with `bat` preview; pages the pick with `bat` |
 | `lg` | lazygit |
 | `ll` / `lt` | eza long and tree listings |
 | `dg` | git with delta paging |
@@ -99,10 +101,11 @@ Start with `dev-doctor` if a command is missing; it reports PATH and config stat
 
 - Ghostty: bundled Catppuccin Mocha, comfortable padding and a subtle translucent background.
 - WezTerm: bundled Catppuccin Mocha, compact tab bar, steady cursor.
-- Herdr: built-in Catppuccin.
 - OMP: built-in dark/light Catppuccin, with memory off initially.
-- Starship: official Catppuccin Powerline preset.
-- Yazi: official Catppuccin Mocha with mauve accents.
+- Starship: Catppuccin Powerline preset with `git_state`, `docker_context`, `status`, `jobs` and SSH-only `hostname` segments. The managed shell init installs the prompt hook in nested shells too, so Herdr panes are styled as well.
+- Yazi: official Catppuccin Mocha with mauve accents, plus `bat`-paged openers and explicit `q`/`Q`/`b` keybindings (`config/yazi/yazi.toml`, `config/yazi/keymap.toml`).
+- Bat: built-in Catppuccin Mocha theme with grid, changes and italic text.
+- Herdr: built-in Catppuccin with custom Mocha tokens, pane gaps, a wider sidebar and a richer status bar.
 
 Install **JetBrainsMono Nerd Font** separately for the preset's full glyphs. Font installation and desktop visual acceptance are follow-up work. Vendored themes carry their licenses and exact upstream revisions in [licenses/sources.json](licenses/sources.json).
 

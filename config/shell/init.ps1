@@ -40,6 +40,12 @@ if ((Get-Command lazygit -ErrorAction SilentlyContinue) -and -not (Get-Command l
 if ((Get-Command delta -ErrorAction SilentlyContinue) -and -not (Get-Command dg -ErrorAction SilentlyContinue)) {
     function global:dg { & git -c ('include.path=' + (Join-Path $env:DEV_COCKPIT_CONFIG_DIR 'delta.gitconfig')) @args }
 }
+if (-not $env:EDITOR) {
+    foreach ($dcEditor in 'nvim', 'vim', 'hx', 'nano') {
+        if (Get-Command $dcEditor -ErrorAction SilentlyContinue) { $env:EDITOR = $dcEditor; break }
+    }
+}
+if ($env:EDITOR -and -not $env:VISUAL) { $env:VISUAL = $env:EDITOR }
 if ((Get-Command yazi -ErrorAction SilentlyContinue) -and -not (Get-Command y -ErrorAction SilentlyContinue)) {
     function global:y {
         $temporary = [IO.Path]::GetTempFileName()
@@ -47,16 +53,33 @@ if ((Get-Command yazi -ErrorAction SilentlyContinue) -and -not (Get-Command y -E
             & yazi @args ('--cwd-file=' + $temporary)
             if ((Get-Item -LiteralPath $temporary).Length -gt 0) {
                 $selected = [IO.File]::ReadAllText($temporary).TrimEnd("`r", "`n")
-                if (Test-Path -LiteralPath $selected -PathType Container) { Set-Location -LiteralPath $selected }
+                if ($selected -and (Test-Path -LiteralPath $selected -PathType Container) -and $selected -ne $PWD.Path) {
+                    Set-Location -LiteralPath $selected
+                }
             }
         } finally { Remove-Item -LiteralPath $temporary -ErrorAction SilentlyContinue }
     }
 }
-# Native PowerShell picker, without a third-party PSFzf module.
+# Native PowerShell pickers, without a third-party PSFzf module.
+function global:Get-DevCockpitFiles {
+    if (Get-Command fd -ErrorAction SilentlyContinue) { & fd --type f --hidden --exclude .git --exclude node_modules --exclude .venv }
+    else { Get-ChildItem -File -Recurse | ForEach-Object { $_.FullName } }
+}
 if ((Get-Command fzf -ErrorAction SilentlyContinue) -and -not (Get-Command ff -ErrorAction SilentlyContinue)) {
-    function global:ff {
-        if (Get-Command fd -ErrorAction SilentlyContinue) { & fd --type f --hidden --exclude .git | & fzf @args }
-        else { Get-ChildItem -File -Recurse | ForEach-Object { $_.FullName } | & fzf @args }
+    function global:ff { Get-DevCockpitFiles | & fzf @args }
+}
+if ((Get-Command fzf -ErrorAction SilentlyContinue) -and -not (Get-Command fe -ErrorAction SilentlyContinue)) {
+    function global:fe {
+        $dcPick = Get-DevCockpitFiles | & fzf @args
+        if ($dcPick -and $env:EDITOR) { & $env:EDITOR $dcPick }
+    }
+}
+if ((Get-Command fzf -ErrorAction SilentlyContinue) -and -not (Get-Command fv -ErrorAction SilentlyContinue)) {
+    function global:fv {
+        $dcPick = Get-DevCockpitFiles | & fzf @args
+        if ($dcPick) {
+            if (Get-Command bat -ErrorAction SilentlyContinue) { & bat --paging=always $dcPick } else { Get-Content -LiteralPath $dcPick }
+        }
     }
 }
 if (-not $env:FZF_DEFAULT_OPTS) {
@@ -87,7 +110,7 @@ if ((Get-Command mise -ErrorAction SilentlyContinue) -and $env:DEV_COCKPIT_SKIP_
 if ((Get-Command atuin -ErrorAction SilentlyContinue) -and $env:DEV_COCKPIT_SKIP_ATUIN -ne '1') {
     try { $dcHook = & atuin init powershell --disable-up-arrow; if ($LASTEXITCODE -eq 0) { Invoke-Expression ($dcHook | Out-String) } } catch { Write-Verbose $_ }
 }
-if ((Get-Command starship -ErrorAction SilentlyContinue) -and $env:DEV_COCKPIT_SKIP_STARSHIP -ne '1' -and -not $env:STARSHIP_SESSION_KEY) {
+if ((Get-Command starship -ErrorAction SilentlyContinue) -and $env:DEV_COCKPIT_SKIP_STARSHIP -ne '1') {
     $dcExistingStarship = Join-Path $env:USERPROFILE '.config/starship.toml'
     if ($env:XDG_CONFIG_HOME) { $dcExistingStarship = Join-Path $env:XDG_CONFIG_HOME 'starship.toml' }
     if (-not $env:STARSHIP_CONFIG -and -not (Test-Path -LiteralPath $dcExistingStarship)) {
@@ -95,4 +118,4 @@ if ((Get-Command starship -ErrorAction SilentlyContinue) -and $env:DEV_COCKPIT_S
     }
     try { $dcHook = & starship init powershell; if ($LASTEXITCODE -eq 0) { Invoke-Expression ($dcHook | Out-String) } } catch { Write-Verbose $_ }
 }
-Remove-Variable dcUserHome, dcEnvironment, dcBin, dcOptionCommand, dcCompletions, dcCompletion, dcExistingStarship, dcHook -ErrorAction SilentlyContinue
+Remove-Variable dcUserHome, dcEnvironment, dcBin, dcOptionCommand, dcCompletions, dcCompletion, dcExistingStarship, dcHook, dcEditor, dcPick -ErrorAction SilentlyContinue
