@@ -29,7 +29,14 @@ _dev_cockpit() {
     "${DEV_COCKPIT_PYTHON:-python3}" "$DEV_COCKPIT_ROOT/bootstrap/cockpit.py" "$@"
 }
 # Existing user commands, aliases and functions always win.
-command -v dev >/dev/null 2>&1 || function dev { _dev_cockpit launch "$@"; }
+# `dev` runs the full setup by default; known subcommands pass through so the
+# documented forms (`dev open .`, `dev memory show .`, `dev graph init .`) work.
+command -v dev >/dev/null 2>&1 || function dev {
+    case "${1:-}" in
+        launch|doctor|update|uninstall|completions|mobile|memory|graph|open) _dev_cockpit "$@" ;;
+        *) _dev_cockpit launch "$@" ;;
+    esac
+}
 command -v dev-doctor >/dev/null 2>&1 || function dev-doctor { _dev_cockpit doctor "$@"; }
 command -v dev-update >/dev/null 2>&1 || function dev-update { _dev_cockpit update "$@"; }
 command -v dev-uninstall >/dev/null 2>&1 || function dev-uninstall { _dev_cockpit uninstall "$@"; }
@@ -98,8 +105,10 @@ elif [ -n "${BASH_VERSION:-}" ]; then
         done
     fi
     # Apple's Bash 3.2 cannot load bash-completion v2 but can load Git's script.
+    # macOS ships Git's completion with the Command Line Tools/Xcode, not in the
+    # Homebrew or Linux paths, so check those locations too.
     if ! declare -F __git_complete >/dev/null 2>&1; then
-        for _dc_completion in /opt/homebrew/etc/bash_completion.d/git-completion.bash /usr/local/etc/bash_completion.d/git-completion.bash /home/linuxbrew/.linuxbrew/etc/bash_completion.d/git-completion.bash /usr/share/git-core/contrib/completion/git-completion.bash /usr/share/bash-completion/completions/git; do
+        for _dc_completion in /opt/homebrew/etc/bash_completion.d/git-completion.bash /opt/homebrew/share/git-core/contrib/completion/git-completion.bash /usr/local/etc/bash_completion.d/git-completion.bash /usr/local/share/git-core/contrib/completion/git-completion.bash /home/linuxbrew/.linuxbrew/etc/bash_completion.d/git-completion.bash /home/linuxbrew/.linuxbrew/share/git-core/contrib/completion/git-completion.bash /Library/Developer/CommandLineTools/usr/share/git-core/git-completion.bash /Applications/Xcode.app/Contents/Developer/usr/share/git-core/git-completion.bash /usr/share/git-core/contrib/completion/git-completion.bash /usr/share/bash-completion/completions/git; do
             if [ -r "$_dc_completion" ]; then . "$_dc_completion"; break; fi
         done
     fi
