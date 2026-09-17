@@ -16,7 +16,15 @@ function global:Invoke-DevCockpit {
     if (-not (Test-Path -LiteralPath $runtime)) { throw 'Dev Cockpit runtime is missing. Rerun setup to repair it.' }
     & $env:DEV_COCKPIT_PYTHON $runtime @args
 }
-if (-not (Get-Command dev -ErrorAction SilentlyContinue)) { function global:dev { Invoke-DevCockpit launch @args } }
+# `dev` runs the full setup by default; known subcommands pass through so the
+# documented forms (`dev open .`, `dev memory show .`, `dev graph init .`) work.
+if (-not (Get-Command dev -ErrorAction SilentlyContinue)) {
+    function global:dev {
+        $dcSubcommands = 'launch', 'doctor', 'update', 'uninstall', 'completions', 'mobile', 'memory', 'graph', 'open'
+        if ($args.Count -gt 0 -and $dcSubcommands -contains $args[0]) { Invoke-DevCockpit @args }
+        else { Invoke-DevCockpit launch @args }
+    }
+}
 if (-not (Get-Command dev-doctor -ErrorAction SilentlyContinue)) { function global:dev-doctor { Invoke-DevCockpit doctor @args } }
 if (-not (Get-Command dev-update -ErrorAction SilentlyContinue)) { function global:dev-update { Invoke-DevCockpit update @args } }
 if (-not (Get-Command dev-uninstall -ErrorAction SilentlyContinue)) { function global:dev-uninstall { Invoke-DevCockpit uninstall @args } }

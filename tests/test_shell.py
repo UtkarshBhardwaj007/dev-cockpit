@@ -138,6 +138,13 @@ class ShellTests(unittest.TestCase):
         actual = [json.loads(line.removeprefix('ARGUMENTS=')) for line in result.stdout.splitlines() if line.startswith('ARGUMENTS=')]
         self.assertEqual(actual, [[name, '--some flag'] for name in ['doctor', 'update', 'uninstall', 'memory', 'graph', 'completions']])
 
+    def test_dev_dispatches_documented_subcommands_and_defaults_to_launch(self):
+        result = self.run_shell('bash', self.home / '.bashrc',
+                                '\n'.join(['dev open .', 'dev memory show .', 'dev graph init .', 'dev "project with spaces"', 'dev']))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        actual = [json.loads(line.removeprefix('ARGUMENTS=')) for line in result.stdout.splitlines() if line.startswith('ARGUMENTS=')]
+        self.assertEqual(actual, [['open', '.'], ['memory', 'show', '.'], ['graph', 'init', '.'], ['launch', 'project with spaces'], ['launch']])
+
     @unittest.skipUnless(os.name == 'nt', 'Native Windows profile execution runs in Windows CI')
     def test_native_powershell_profiles_parse_and_forward_arguments(self):
         for shell in ['powershell', 'pwsh']:

@@ -22,7 +22,9 @@ For persistence, add that line once to `.zshrc` or `.bashrc`. On Windows:
 
 Add it once to the PowerShell profile you use. The installer preserves your profile because deciding which existing prompt/hooks to replace requires inspection. Avoid initializing two prompt systems at once. Shell support in this milestone is bash, zsh and PowerShell; fish/Nushell need their own snippets.
 
-The snippets initialize Starship and zoxide when present, and expose `dev` to launch Herdr. They do not automatically start Herdr, install shell plugins, initialize mise environment hooks, enable Atuin history capture or register MCP servers. Use upstream mise activation once your desired project runtime policy is chosen.
+The snippets initialize Starship and zoxide when present, and expose `dev` (install/config) plus `dev open .` (open a project in Herdr). They do not automatically start Herdr, install shell plugins, initialize mise environment hooks, enable Atuin history capture or register MCP servers. Use upstream mise activation once your desired project runtime policy is chosen.
+
+On bash 4 or newer the snippet also loads Homebrew's `bash-completion@2` automatically, so the `~/.bash_profile` line Homebrew prints after installing it is not required. Apple's `/bin/bash` 3.2 cannot load bash-completion v2, but dev-cockpit still registers its own completions and Git's completion there. The login profile (`.bash_profile`, `.bash_login` or `.profile`, whichever exists first) and `.bashrc` both receive the managed block, so login and non-login interactive bash are covered.
 
 ## Herdr and OMP
 
@@ -34,7 +36,7 @@ herdr integration install omp
 
 This writes an OMP extension; the upstream documentation explains its location and removal. Do not set Pi and OMP to the same agent directory. The integration lets Herdr identify OMP and resume a saved conversation after a restart. [Integration reference](https://herdr.dev/docs/integrations/#omp)
 
-Start `dev` (or `herdr`), open a project workspace, and launch `omp`, `yazi` and a shell in separate panes. Automated layout provisioning is the next integration milestone. Yazi does not automatically follow another pane's cwd. Keep `omp` directly available when diagnosing the multiplexer.
+Run `dev open .` from a project to create (or reuse) a Herdr workspace with OMP, Yazi and a shell pane, or start `herdr` directly and open a workspace yourself. Yazi does not automatically follow another pane's cwd. Keep `omp` directly available when diagnosing the multiplexer.
 
 ## Theme and existing configuration
 

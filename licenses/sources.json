@@ -21,7 +21,7 @@
     "path": "docs/public/presets/toml/catppuccin-powerline.toml",
     "revision": "e2d1a2c482fb43667017241dc9802f693628b53d",
     "license": "ISC",
-    "sha256": "777037ea0a70c3c093b5d513d46d728e07d2c3dbdaa7091bdd7d08bb582df33c"
+    "sha256": "c23746e4c249035ad02f42886e947643e80bae6643aa4170a3b4713bea5febcb"
   },
   {
     "file": "licenses/starship.txt",

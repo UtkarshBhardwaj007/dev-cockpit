@@ -72,6 +72,29 @@ An existing file is preserved unless this project previously created it and its 
 
 Profiles select packages, not config: `--apply-config` applies the common themed configuration set. Repeat `--profile` on Unix, or use `-Profile core,cockpit` on Windows. `--install` preflights selected missing manual adapters and stops before package changes if one is required. Package installation skips binaries already on PATH; version compatibility is not yet enforced.
 
+## Next commands
+
+Open Ghostty (or another terminal) and start a new session so the shell functions load, or source the activation snippet in the current shell. Then:
+
+| Command | What it does |
+|---|---|
+| `dev` | Re-run install and config; idempotent and safe to repeat |
+| `dev open .` | Open the current project in a Herdr cockpit workspace (OMP + Yazi + shell panes) |
+| `dev-doctor` | Check installed binaries and configuration status |
+| `dev-update` | Refresh managed config and install package updates |
+| `dev-uninstall` | Remove unchanged project-owned config; packages stay installed |
+| `dev-completions` | Refresh stale shell completions (`--force` to regenerate) |
+| `dev memory <subcommand> .` | Manage local project memory, e.g. `dev memory show .` |
+| `dev graph <subcommand> .` | Build or query the local code graph, e.g. `dev graph init .` |
+| `herdr` | Start the Herdr multiplexer directly |
+| `omp` | Start the OMP coding agent directly |
+| `yazi` / `y` | File manager; `y` returns to the directory you quit in |
+| `lg` | lazygit |
+| `ll` / `lt` | eza long and tree listings |
+| `dg` | git with delta paging |
+
+Start with `dev-doctor` if a command is missing; it reports PATH and config status. See [shell activation](docs/customization.md#activate-the-shell) and [intelligence](docs/intelligence.md) for details.
+
 ## Theme
 
 - Ghostty: bundled Catppuccin Mocha, comfortable padding and a subtle translucent background.
