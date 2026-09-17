@@ -178,8 +178,8 @@ fi
 # which is exported by the parent shell and used to skip initialization in panes.
 _dc_starship_ready=0
 if [ -n "${ZSH_VERSION:-}" ]; then
-    case " ${precmd_functions[*]:-} " in *" starship_precmd "*) _dc_starship_ready=1 ;; esac
-    case " ${preexec_functions[*]:-} " in *" starship_preexec "*) _dc_starship_ready=1 ;; esac
+    case " ${precmd_functions[*]:-} " in *" starship_precmd "*|*" prompt_starship_precmd "*) _dc_starship_ready=1 ;; esac
+    case " ${preexec_functions[*]:-} " in *" starship_preexec "*|*" prompt_starship_preexec "*) _dc_starship_ready=1 ;; esac
 elif [ -n "${BASH_VERSION:-}" ]; then
     case "${PROMPT_COMMAND:-}" in *starship*) _dc_starship_ready=1 ;; esac
     command -v starship_precmd >/dev/null 2>&1 && _dc_starship_ready=1

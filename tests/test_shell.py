@@ -146,6 +146,25 @@ class ShellTests(unittest.TestCase):
             calls = self.log.read_text().splitlines() if self.log.exists() else []
             self.assertEqual(sum(line.startswith('starship ') for line in calls), 1, calls)
 
+    def test_starship_is_not_initialized_twice_when_a_hook_already_exists(self):
+        # Starship's zsh init registers `prompt_starship_precmd`, while its bash
+        # init registers `starship_precmd`. A profile that already installed the
+        # hook must not pay for a second `starship init`.
+        preludes = {
+            'bash': 'starship_precmd() { :; }\nPROMPT_COMMAND="starship_precmd"',
+            'zsh': 'autoload -Uz add-zsh-hook\nprompt_starship_precmd() { :; }\nadd-zsh-hook precmd prompt_starship_precmd',
+        }
+        for shell, prelude in preludes.items():
+            if not shutil.which(shell):
+                continue
+            with self.subTest(shell=shell):
+                self.log.unlink(missing_ok=True)
+                profile = self.home / ('.bashrc' if shell == 'bash' else '.zshrc')
+                result = self.run_shell(shell, profile, 'printf "OK\n"', before=prelude)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                calls = self.log.read_text().splitlines() if self.log.exists() else []
+                self.assertEqual([line for line in calls if line.startswith('starship ')], [], calls)
+
     @unittest.skipIf(os.name == 'nt', 'The fuzzy file helpers are POSIX shell functions; PowerShell has its own fe/fv')
     def test_fuzzy_file_helpers_are_defined(self):
         result = self.run_shell('bash', self.home / '.bashrc', 'type -t fe; type -t fv; type -t y')
