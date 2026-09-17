@@ -1,3 +1,5 @@
-# A bundled dark theme, available without downloading/building a theme cache.
---theme="TwoDark"
---style="numbers,changes,header"
+# Catppuccin Mocha ships with bat 0.25+; no theme cache or download needed.
+--theme="Catppuccin Mocha"
+--style="numbers,changes,header,grid"
+--italic-text=always
+--paging=auto

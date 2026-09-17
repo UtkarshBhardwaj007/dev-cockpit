@@ -1,0 +1,9 @@
+#:schema https://yazi-rs.github.io/schemas/keymap.json
+# Dev Cockpit yazi keybindings. `prepend_keymap` adds these without discarding
+# yazi's defaults, and takes precedence over any built-in binding.
+[mgr]
+prepend_keymap = [
+	{ on = "q", run = "quit", desc = "Quit and cd the shell to the hovered directory" },
+	{ on = "Q", run = "quit --no-cwd-file", desc = "Quit without changing the shell directory" },
+	{ on = "b", run = "open --interactive", desc = "Open with... (bat, editor, reveal)" },
+]

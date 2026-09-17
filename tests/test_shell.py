@@ -132,6 +132,26 @@ class ShellTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn('DIRECTORY=' + str(destination), result.stdout)
 
+    def test_starship_initializes_in_nested_shells(self):
+        # Herdr panes inherit STARSHIP_SESSION_KEY from the parent shell; the
+        # managed init must still install the prompt hook in the child shell.
+        self.env['STARSHIP_SESSION_KEY'] = '12345'
+        for shell in ['bash', 'zsh']:
+            if not shutil.which(shell):
+                continue
+            self.log.unlink(missing_ok=True)
+            profile = self.home / ('.bashrc' if shell == 'bash' else '.zshrc')
+            result = self.run_shell(shell, profile, 'printf "OK\n"')
+            self.assertEqual(result.returncode, 0, result.stderr)
+            calls = self.log.read_text().splitlines() if self.log.exists() else []
+            self.assertEqual(sum(line.startswith('starship ') for line in calls), 1, calls)
+
+    @unittest.skipIf(os.name == 'nt', 'The fuzzy file helpers are POSIX shell functions; PowerShell has its own fe/fv')
+    def test_fuzzy_file_helpers_are_defined(self):
+        result = self.run_shell('bash', self.home / '.bashrc', 'type -t fe; type -t fv; type -t y')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.split(), ['function', 'function', 'function'])
+
     def test_shell_wrappers_forward_all_cli_commands(self):
         result = self.run_shell('bash', self.home / '.bashrc', '\n'.join(name + ' "--some flag"' for name in ['dev-doctor', 'dev-update', 'dev-uninstall', 'dev-memory', 'dev-graph', 'dev-completions']))
         self.assertEqual(result.returncode, 0, result.stderr)

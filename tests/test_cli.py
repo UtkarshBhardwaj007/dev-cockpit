@@ -219,6 +219,11 @@ class SubcommandTests(unittest.TestCase):
         run.assert_called_once()
         gen.assert_called_once()
 
+    @unittest.mock.patch("dev_cockpit.cli.packages.run_packages", return_value=[])
+    def test_force_config_flag_is_accepted(self, run):
+        code = cli.main(["--apply-config", "--force-config", "--home", str(self.home)])
+        self.assertEqual(code, 0)
+
     @unittest.mock.patch("dev_cockpit.workspace.launch", return_value=0)
     def test_open_subcommand_launches_workspace(self, launch):
         with unittest.mock.patch.dict(os.environ, {"HOME": str(self.home)}):

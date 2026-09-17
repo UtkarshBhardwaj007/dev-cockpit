@@ -118,17 +118,65 @@ class ConfigurationTests(unittest.TestCase):
         paths, _ = config.config_targets(self.home, 'linux')
         self.assertEqual(paths['config/starship/starship.toml'].read_bytes(), b'# new managed release\n')
 
-    def test_omp_and_herdr_are_not_replaced_by_release_updates(self):
+    def test_omp_is_not_replaced_by_release_updates(self):
         self.apply()
         paths, _ = config.config_targets(self.home, 'linux')
-        original = {key: paths[key].read_bytes() for key in ['config/herdr/config.toml', 'config/omp/config.yml']}
+        original = paths['config/omp/config.yml'].read_bytes()
         checkout = self.base / 'new checkout'
         shutil.copytree(ROOT / 'config', checkout / 'config')
-        for source in original:
-            (checkout / source).write_bytes(b'# different default\n')
+        (checkout / 'config/omp/config.yml').write_bytes(b'# different default\n')
         self.apply(root=checkout)
-        for source, content in original.items():
-            self.assertEqual(paths[source].read_bytes(), content)
+        self.assertEqual(paths['config/omp/config.yml'].read_bytes(), original)
+
+    def test_owned_herdr_config_updates_until_the_user_edits_it(self):
+        self.apply()
+        paths, _ = config.config_targets(self.home, 'linux')
+        checkout = self.base / 'new checkout'
+        shutil.copytree(ROOT / 'config', checkout / 'config')
+        (checkout / 'config/herdr/config.toml').write_bytes(b'# new managed release\n')
+        self.apply(root=checkout)
+        self.assertEqual(paths['config/herdr/config.toml'].read_bytes(), b'# new managed release\n')
+        paths['config/herdr/config.toml'].write_bytes(b'# user edited\n')
+        (checkout / 'config/herdr/config.toml').write_bytes(b'# another release\n')
+        self.apply(root=checkout)
+        self.assertEqual(paths['config/herdr/config.toml'].read_bytes(), b'# user edited\n')
+
+    def test_force_config_repairs_edited_owned_files_with_backup(self):
+        self.apply()
+        paths, _ = config.config_targets(self.home, 'linux')
+        chosen = paths['config/starship/starship.toml']
+        chosen.write_bytes(b'# my changes\n')
+        self.apply(force=True)
+        self.assertEqual(chosen.read_bytes(), (ROOT / 'config/starship/starship.toml').read_bytes())
+        backups = [item.read_bytes() for item in (self.home / '.config/dev-cockpit/backups').rglob('*.bak')]
+        self.assertIn(b'# my changes\n', backups)
+
+    def test_force_config_repairs_edited_herdr_config(self):
+        self.apply()
+        paths, _ = config.config_targets(self.home, 'linux')
+        herdr = paths['config/herdr/config.toml']
+        herdr.write_bytes(b'# herdr rewrote this\n')
+        self.apply(force=True)
+        self.assertEqual(herdr.read_bytes(), (ROOT / 'config/herdr/config.toml').read_bytes())
+
+    def test_force_config_never_touches_user_created_files(self):
+        paths, _ = config.config_targets(self.home, 'linux')
+        chosen = paths['config/starship/starship.toml']
+        chosen.parent.mkdir(parents=True, exist_ok=True)
+        chosen.write_bytes(b'# my own prompt\n')
+        self.apply(force=True)
+        self.assertEqual(chosen.read_bytes(), b'# my own prompt\n')
+
+    def test_yazi_behavior_config_is_installed(self):
+        self.apply()
+        paths, _ = config.config_targets(self.home, 'linux')
+        behavior = paths['config/yazi/yazi.toml']
+        keymap = paths['config/yazi/keymap.toml']
+        self.assertTrue(behavior.is_file())
+        self.assertTrue(keymap.is_file())
+        self.assertIn(b'[opener]', behavior.read_bytes())
+        self.assertIn(b'bat', behavior.read_bytes())
+        self.assertIn(b'prepend_keymap', keymap.read_bytes())
 
     def test_malformed_markers_fail_before_any_config_write(self):
         self.home.mkdir()

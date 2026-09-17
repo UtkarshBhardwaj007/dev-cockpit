@@ -97,6 +97,9 @@ if ($UninstallConfig) { $cliArgs += '--uninstall-config' }
 if ($Doctor) { $cliArgs += '--doctor' }
 if ($DryRun) { $cliArgs += '--dry-run' }
 if ($HomeDirectory) { $cliArgs += @('--home', $HomeDirectory) }
+# Repair project-created config by default so one command lands every update.
+# Files the user created themselves are still never touched.
+if ($mutate) { $cliArgs += '--force-config' }
 $cliArgs += $CliArguments
 $scratch = $null
 try {
