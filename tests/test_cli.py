@@ -80,6 +80,32 @@ class CliSetupTests(unittest.TestCase):
         self.assertEqual(code, 0)
         gen.assert_not_called()
 
+    @unittest.mock.patch("dev_cockpit.cli.packages.run_packages", return_value=[])
+    @unittest.mock.patch("dev_cockpit.cli.configuration.generate_completions", return_value=[])
+    @unittest.mock.patch("dev_cockpit.cli.packages.launch_gesture_bridge", return_value=None)
+    def test_setup_install_passes_selected_profiles_to_gesture_bridge(self, launch, gen, run):
+        with unittest.mock.patch.dict(os.environ, {"HOME": str(self.home)}):
+            cli._setup(["--install", "--profile", "gestures"])
+        self.assertEqual(launch.call_args[0][1], ["gestures"])
+
+    @unittest.mock.patch("dev_cockpit.cli.packages.launch_gesture_bridge", return_value="launched Hammerspoon")
+    def test_gesture_bridge_helper_prints_accessibility_reminder(self, launch):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            cli._launch_gesture_bridge("macos", ["gestures"], self.home)
+        text = out.getvalue()
+        self.assertIn("Accessibility", text)
+        # Reload Config reloads Lua but does not restart the process, so it does
+        # not pick up a freshly granted Accessibility permission.
+        self.assertIn("quit and reopen Hammerspoon", text)
+
+    @unittest.mock.patch("dev_cockpit.cli.packages.launch_gesture_bridge", return_value=None)
+    def test_gesture_bridge_helper_is_quiet_when_not_applicable(self, launch):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            cli._launch_gesture_bridge("linux", ["gestures"], self.home)
+        self.assertEqual(out.getvalue(), "")
+
     def test_subcommands_dispatch_mobile(self):
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
@@ -184,6 +210,18 @@ class SubcommandTests(unittest.TestCase):
         text = out.getvalue()
         self.assertIn("FOUND", text)
         self.assertIn("CONFIG", text)
+
+    @unittest.mock.patch("dev_cockpit.cli.packages.gesture_bridge_app", return_value=Path("/Applications/Hammerspoon.app"))
+    def test_doctor_gestures_profile_reports_hammerspoon(self, app):
+        if cli.host_platform() != "macos":
+            self.skipTest("the gestures profile is macOS-only")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            cli.main(["doctor", "--profile", "gestures", "--home", str(self.home)])
+        text = out.getvalue()
+        self.assertIn("GESTURE", text)
+        self.assertIn("Hammerspoon.app", text)
+        self.assertIn("Accessibility", text)
 
     def test_uninstall_dry_run_is_read_only(self):
         cli.main(["--home", str(self.home), "--apply-config"])

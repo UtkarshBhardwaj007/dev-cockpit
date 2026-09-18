@@ -29,7 +29,7 @@ def host_platform():
         raise ValueError("Unsupported OS; supported targets are macOS, Linux and Windows.")
 
 
-PROFILES = ("core", "cockpit", "terminal", "history", "extras")
+PROFILES = ("core", "cockpit", "terminal", "history", "extras", "gestures")
 
 
 def _base_parser():
@@ -76,11 +76,13 @@ def _setup(argv):
             parser.error("--doctor checks the host OS only")
         return packages.doctor(plan, home=home)
     if not args.uninstall_config and args.apply_config:
-        configuration.manage_config(home, target, apply=True, use_environment=not args.home, root=root, force=args.force_config)
+        configuration.manage_config(home, target, apply=True, use_environment=not args.home, root=root, force=args.force_config, profiles=profiles)
     elif args.activate_shell:
         # Idempotent: only creates/updates the owned shell activation blocks.
-        configuration.manage_config(home, target, apply=True, use_environment=not args.home, root=root, force=args.force_config)
+        configuration.manage_config(home, target, apply=True, use_environment=not args.home, root=root, force=args.force_config, profiles=profiles)
     packages.run_packages(plan, install=args.install, home=home)
+    if args.install:
+        _launch_gesture_bridge(target, profiles, home)
     if args.uninstall_config:
         # apply=True is required: manage_config only performs removal when apply is set.
         configuration.manage_config(home, target, apply=True, uninstall=True, use_environment=not args.home, root=root)
@@ -89,6 +91,19 @@ def _setup(argv):
     if args.apply_config or args.activate_shell:
         print("Configuration and shell activation applied. Existing user profile content outside the managed block is preserved.")
     return 0
+
+
+def _launch_gesture_bridge(target, profiles, home):
+    """Start Hammerspoon after install so the gestures bridge is live.
+
+    No-op unless the host is macOS and the gestures profile is selected; the
+    Accessibility grant itself is manual and cannot be verified from here.
+    """
+    message = packages.launch_gesture_bridge(target, profiles, home=home)
+    if message:
+        print(message + ". Grant Hammerspoon Accessibility once (System Settings > "
+              "Privacy & Security > Accessibility), then quit and reopen Hammerspoon "
+              "so it picks up the grant.")
 
 
 def _cmd_launch(argv):
@@ -104,13 +119,21 @@ def _cmd_doctor(argv):
     args = parser.parse_args(argv)
     home = args.home.absolute() if args.home else Path.home()
     target = host_platform()
-    plan = packages.package_plan(target, args.profile or list(DEFAULT_PROFILES))
+    profiles = args.profile or list(DEFAULT_PROFILES)
+    plan = packages.package_plan(target, profiles)
     code = packages.doctor(plan, home=home)
-    for entry in configuration.configuration_status(home, target):
+    for entry in configuration.configuration_status(home, target, profiles=profiles):
         print("CONFIG", entry.get("status", "?"), entry["path"],
               ("- " + entry["detail"]) if entry.get("detail") else "")
         if entry.get("status") == "error":
             code = 1
+    if target == "macos" and "gestures" in profiles:
+        app = packages.gesture_bridge_app(home)
+        print("GESTURE", "FOUND" if app else "MISSING", "Hammerspoon.app", str(app) if app else "")
+        if not app:
+            code = 1
+        print("GESTURE", "MANUAL", "Accessibility must be granted by hand in System Settings > "
+              "Privacy & Security > Accessibility, then quit and reopen Hammerspoon")
     return code
 
 
@@ -122,10 +145,11 @@ def _cmd_update(argv):
     args = parser.parse_args(argv)
     home = args.home.absolute() if args.home else Path.home()
     target = host_platform()
-    configuration.manage_config(home, target, apply=True, use_environment=not args.home, force=True)
+    configuration.manage_config(home, target, apply=True, use_environment=not args.home, force=True, profiles=args.profile or list(DEFAULT_PROFILES))
     configuration.generate_completions(home, target, use_environment=not args.home, force=args.completions)
     plan = packages.package_plan(target, args.profile or list(DEFAULT_PROFILES))
     packages.run_packages(plan, install=True, home=home)
+    _launch_gesture_bridge(target, args.profile or list(DEFAULT_PROFILES), home)
     print("Update complete.")
     return 0
 

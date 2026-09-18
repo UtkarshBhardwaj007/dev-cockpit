@@ -30,10 +30,11 @@ Requires **Python 3.9+**. The launcher provisions Python (plus Homebrew on macOS
 
 ## Optional add-ons
 
-`history` (atuin) and `extras` (btop) are **not** installed by default — they remain opt-in profiles. From a checked-out repository on macOS/Linux:
+`history` (atuin), `extras` (btop) and `gestures` (Hammerspoon trackpad pinch-to-zoom for Herdr panes on macOS) are **not** installed by default — they remain opt-in profiles. From a checked-out repository on macOS/Linux:
 
 ```sh
 sh bootstrap/setup.sh --install --profile history --profile extras
+sh bootstrap/setup.sh --install --apply-config --profile gestures
 ```
 
 On Windows:
@@ -69,8 +70,9 @@ A file this project created is repaired on every install, including when it was 
 | `terminal` | Ghostty on Unix, WezTerm on Windows | yes | macOS cask / Windows WinGet; Linux installs via distro package or pinned .deb on Ubuntu/Debian/Arch/openSUSE, else prints guidance |
 | `history` | Atuin | no (opt-in) | Homebrew / WinGet; no sync, import or shell capture automatically enabled |
 | `extras` | btop | no (opt-in) | Homebrew on Unix; not available on Windows |
+| `gestures` | Hammerspoon (macOS only) | no (opt-in) | Homebrew cask; installs the Dev Cockpit pinch-to-zoom bridge for Herdr panes |
 
-Profiles select packages, not config: `--apply-config` applies the common themed configuration set. Repeat `--profile` on Unix, or use `-Profile core,cockpit` on Windows. `--install` preflights selected missing manual adapters and stops before package changes if one is required. Package installation skips binaries already on PATH; version compatibility is not yet enforced.
+Profiles select packages, not config: `--apply-config` applies the common themed configuration set. The `gestures` profile is the one exception — it also installs the macOS Hammerspoon bridge, because that bridge executes host commands and stays opt-in. Repeat `--profile` on Unix, or use `-Profile core,cockpit` on Windows. `--install` preflights selected missing manual adapters and stops before package changes if one is required. Package installation skips binaries already on PATH; version compatibility is not yet enforced.
 
 ## Next commands
 

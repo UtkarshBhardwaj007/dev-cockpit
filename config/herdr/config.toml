@@ -4,6 +4,26 @@
 # then treats it as user-edited and leaves it alone.
 onboarding = false
 
+[keys]
+# Keep the built-in zoom toggle, and add direct modified-function-key bindings
+# that the Dev Cockpit trackpad bridge (Hammerspoon, macOS) presses for pinch
+# gestures. ctrl+alt+shift+F1/F2 is used instead of F13/F14 because Ghostty
+# cannot encode F13/F14 (its legacy table stops at F12 and it does not enable
+# the kitty keyboard protocol). The shell commands run inside the focused pane,
+# so HERDR_SOCKET_PATH routes them to the right session even when you use a
+# named session.
+zoom = "prefix+z"
+
+[[keys.command]]
+key = "ctrl+alt+shift+f1"
+type = "shell"
+command = "herdr pane zoom --on"
+
+[[keys.command]]
+key = "ctrl+alt+shift+f2"
+type = "shell"
+command = "herdr pane zoom --off"
+
 [theme]
 name = "catppuccin"
 auto_switch = false

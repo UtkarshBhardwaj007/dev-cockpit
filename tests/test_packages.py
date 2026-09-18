@@ -270,6 +270,39 @@ class PackageTests(unittest.TestCase):
         with patch('dev_cockpit.packages._receipt', return_value={'files': {'font.ttf': 'hash'}}), patch('dev_cockpit.packages._receipt_condition', return_value='complete'), patch('dev_cockpit.packages._font_registered', return_value=False):
             self.assertIsNone(packages._present(tool, self.home))
 
+    def test_gestures_profile_is_macos_only(self):
+        self.assertEqual([t['id'] for t, _, _ in packages.package_plan('macos', ['gestures'])], ['hammerspoon'])
+        self.assertEqual(packages.package_plan('linux', ['gestures']), [])
+        self.assertEqual(packages.package_plan('windows', ['gestures']), [])
+        command = packages.package_plan('macos', ['gestures'])[0][1]
+        self.assertEqual(command, ['brew', 'install', '--cask', 'hammerspoon'])
+
+    def test_launch_gesture_bridge_is_macos_and_gestures_only(self):
+        with patch('dev_cockpit.packages._read') as read:
+            self.assertIsNone(packages.launch_gesture_bridge('linux', ['gestures']))
+            self.assertIsNone(packages.launch_gesture_bridge('windows', ['gestures']))
+            self.assertIsNone(packages.launch_gesture_bridge('macos', ['core']))
+            read.assert_not_called()
+
+    def test_launch_gesture_bridge_opens_hammerspoon_when_installed(self):
+        app = Path('/Applications/Hammerspoon.app')
+        with patch('dev_cockpit.packages.gesture_bridge_app', return_value=app), patch('dev_cockpit.packages._read', return_value=subprocess.CompletedProcess([], 0, '', '')) as read:
+            message = packages.launch_gesture_bridge('macos', ['gestures'])
+        self.assertEqual(message, 'launched Hammerspoon')
+        read.assert_called_once_with(['open', '-a', str(app)])
+
+    def test_launch_gesture_bridge_skips_when_app_is_absent(self):
+        with patch('dev_cockpit.packages.gesture_bridge_app', return_value=None), patch('dev_cockpit.packages._read') as read:
+            self.assertIsNone(packages.launch_gesture_bridge('macos', ['gestures']))
+        read.assert_not_called()
+
+    def test_launch_gesture_bridge_reports_launch_failure(self):
+        app = Path('/Applications/Hammerspoon.app')
+        failed = subprocess.CompletedProcess([], 1, '', 'not permitted')
+        with patch('dev_cockpit.packages.gesture_bridge_app', return_value=app), patch('dev_cockpit.packages._read', return_value=failed):
+            message = packages.launch_gesture_bridge('macos', ['gestures'])
+        self.assertEqual(message, 'could not launch Hammerspoon: not permitted')
+
     def test_each_download_is_https_pinned_and_supported_native_assets_exist(self):
         manifest = packages._json(packages.ROOT / 'manifests/downloads.json')
         for source in manifest['sources'].values():

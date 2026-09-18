@@ -17,7 +17,7 @@ import tempfile
 from .downloads import download, extract_archive, sha256_file
 
 ROOT = Path(__file__).resolve().parents[1]
-PROFILES = ('core', 'cockpit', 'terminal', 'history', 'extras')
+PROFILES = ('core', 'cockpit', 'terminal', 'history', 'extras', 'gestures')
 
 
 def _json(path):
@@ -491,6 +491,34 @@ def run_packages(plan, install=False, *, home=None, cache_dir=None):
             raise ValueError('Installer returned success but ' + tool['id'] + ' was not found; rerun to repair the incomplete installation')
         results.append({'id': tool['id'], 'status': 'installed'})
     return results
+
+
+def gesture_bridge_app(home=None):
+    """Return the Hammerspoon app bundle path, or None when it is not installed."""
+    home = Path(home or Path.home())
+    for candidate in (Path('/Applications/Hammerspoon.app'), home / 'Applications/Hammerspoon.app'):
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def launch_gesture_bridge(target, profiles, *, home=None):
+    """Start Hammerspoon so the pinch-to-zoom bridge is live after install.
+
+    macOS-only and opt-in: returns None on other targets, when the gestures
+    profile is not selected, or when the cask is not installed. The Accessibility
+    grant is manual and cannot be verified from the CLI, so this only launches the
+    app; the bridge itself reports whether it actually started.
+    """
+    if target != 'macos' or 'gestures' not in profiles:
+        return None
+    app = gesture_bridge_app(home)
+    if app is None:
+        return None
+    result = _read(['open', '-a', str(app)])
+    if result.returncode != 0:
+        return 'could not launch Hammerspoon: ' + (result.stderr or result.stdout).strip()
+    return 'launched Hammerspoon'
 
 
 def doctor(plan, *, home=None):

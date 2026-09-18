@@ -470,6 +470,20 @@
           "source": "font"
         }
       }
+    },
+    {
+      "id": "hammerspoon",
+      "binary": null,
+      "profile": "gestures",
+      "platforms": {
+        "macos": {
+          "adapter": "brew",
+          "package": "hammerspoon",
+          "cask": true
+        },
+        "linux": null,
+        "windows": null
+      }
     }
   ]
 }
