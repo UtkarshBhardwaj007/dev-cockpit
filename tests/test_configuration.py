@@ -255,17 +255,57 @@ class ConfigurationTests(unittest.TestCase):
             self.apply()
         self.assertEqual(list(outside.iterdir()), [])
 
-    def test_symlinked_profile_rejected(self):
+    def test_symlinked_profile_preserved_and_setup_continues(self):
+        # Issue #7: a stow/chezmoi managed ~/.bashrc must not abort setup.
         self.home.mkdir()
         outside = self.base / 'personal'
         outside.write_bytes(b'preserve')
         try:
+            (self.home / '.bashrc').symlink_to(outside)
+        except OSError:
+            self.skipTest('Symlink creation requires Windows Developer Mode')
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            self.apply(target='macos')
+        self.assertTrue((self.home / '.bashrc').is_symlink())
+        self.assertEqual(outside.read_bytes(), b'preserve')
+        self.assertIn(config.BEGIN, (self.home / '.zshrc').read_bytes())
+        self.assertTrue((self.home / '.config/dev-cockpit/starship.toml').is_file())
+        self.assertIn('PRESERVE symlinked shell profile', output.getvalue())
+        self.assertIn(config.BEGIN.decode(), output.getvalue())
+        # Re-running (and uninstalling) stays non-fatal and never writes through.
+        self.apply(target='macos')
+        self.apply(target='macos', uninstall=True)
+        self.assertEqual(outside.read_bytes(), b'preserve')
+
+    def test_symlinked_profile_with_manual_block_is_not_reprinted(self):
+        self.home.mkdir()
+        outside = self.base / 'personal'
+        outside.write_bytes(config.BEGIN + b"\n" + config.END + b"\n")
+        try:
             (self.home / '.zshrc').symlink_to(outside)
         except OSError:
             self.skipTest('Symlink creation requires Windows Developer Mode')
-        with self.assertRaises(ValueError):
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
             self.apply()
-        self.assertEqual(outside.read_bytes(), b'preserve')
+        self.assertNotIn('MANUAL', output.getvalue())
+
+    def test_symlinked_config_file_preserved(self):
+        self.home.mkdir()
+        outside = self.base / 'bat-config'
+        outside.write_bytes(b'mine')
+        (self.home / '.config/bat').mkdir(parents=True)
+        try:
+            (self.home / '.config/bat/config').symlink_to(outside)
+        except OSError:
+            self.skipTest('Symlink creation requires Windows Developer Mode')
+        self.apply()
+        self.assertEqual(outside.read_bytes(), b'mine')
+        self.assertTrue((self.home / '.config/dev-cockpit/starship.toml').is_file())
+        statuses = {entry['path']: entry['status'] for entry in config.configuration_status(self.home, 'linux')}
+        self.assertEqual(statuses[str((self.home / '.config/bat/config'))], 'symlinked')
+        self.assertNotIn('error', statuses.values())
 
     def test_windows_reparse_point_rejected(self):
         class Junction:

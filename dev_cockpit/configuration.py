@@ -27,14 +27,22 @@ def digest(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def reject_links(path):
+def linked_entry(path):
+    """Return the first symlink/junction in path or its parents, else None."""
     for entry in (Path(path), *Path(path).parents):
         try:
             info = entry.lstat()
         except FileNotFoundError:
             continue
         if stat.S_ISLNK(info.st_mode) or getattr(info, "st_file_attributes", 0) & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400):
-            raise ValueError("Refusing symlink/junction in managed path: " + str(entry))
+            return entry
+    return None
+
+
+def reject_links(path):
+    entry = linked_entry(path)
+    if entry is not None:
+        raise ValueError("Refusing symlink/junction in managed path: " + str(entry))
 
 
 def atomic_write(path, data):
@@ -314,6 +322,21 @@ def _completion_removal_plan(directory):
     return changes
 
 
+def _report_linked_profile(destination, shell, directory, uninstall):
+    """Never write through a linked profile; tell the user what to add by hand."""
+    print("PRESERVE symlinked shell profile (managed outside dev-cockpit):", destination, "->", destination.resolve())
+    if uninstall:
+        return
+    try:
+        current, _ = _profile_content(destination.read_bytes(), shell) if destination.is_file() else (b"", None)
+        if _block_span(current):
+            return
+    except (OSError, ValueError):  # UnicodeDecodeError is a ValueError
+        return
+    print("MANUAL add this activation block to", destination.resolve(), "(the real file behind " + str(destination) + "), then open a new shell:")
+    print(_profile_block(current, shell, directory).decode().rstrip("\r\n"))
+
+
 def manage_config(home, target, apply=False, uninstall=False, use_environment=False, root=ROOT, python_executable=None, force=False, profiles=None):
     """Preview/apply or remove only unchanged owned files and profile blocks.
 
@@ -326,8 +349,17 @@ def manage_config(home, target, apply=False, uninstall=False, use_environment=Fa
     directory = ledger.parent
     environment, environment_data = _render_environment(directory, target, root, python_executable, home)
     # Validate every destination and the complete state before the first write.
+    # dev-cockpit's own state directory must be real. A link anywhere else (for
+    # example a stow/chezmoi/home-manager managed ~/.bashrc) marks a user-managed
+    # file: it is preserved and never written through, and setup continues.
+    linked = {}
     for destination in [ledger, environment, *paths.values(), *profiles]:
-        reject_links(destination)
+        entry = linked_entry(destination)
+        if entry is not None:
+            if destination == ledger or directory in destination.parents:
+                raise ValueError("Refusing symlink/junction in dev-cockpit state path: " + str(entry) + ". The dev-cockpit config directory must be a real directory.")
+            linked[destination] = entry
+            continue
         if destination.exists() and not destination.is_file():
             raise ValueError("Configuration destination is not a regular file: " + str(destination))
     _state(ledger)
@@ -340,6 +372,9 @@ def manage_config(home, target, apply=False, uninstall=False, use_environment=Fa
         planned = []
         for destination, desired in desired_files.items():
             key = str(destination)
+            if destination in linked:
+                print("PRESERVE symlinked file (managed outside dev-cockpit):", destination, "->", destination.resolve())
+                continue
             current = destination.read_bytes() if destination.exists() else None
             owned = current is not None and state["files"].get(key) == digest(current)
             if uninstall:
@@ -364,6 +399,9 @@ def manage_config(home, target, apply=False, uninstall=False, use_environment=Fa
                 print("PRESERVE existing/user-edited file:", destination)
         for destination, shell in profiles.items():
             key = str(destination)
+            if destination in linked:
+                _report_linked_profile(destination, shell, directory, uninstall)
+                continue
             raw = destination.read_bytes() if destination.exists() else b""
             current, encode = _profile_content(raw, shell)
             extra_context = b""
@@ -435,8 +473,11 @@ def configuration_status(home, target, use_environment=False, profiles=None):
     try:
         state = _state(ledger)
         profiles = profile_targets(home, target, use_environment)
+        reject_links(ledger)
         for path in [*paths.values(), *profiles]:
-            reject_links(path)
+            if linked_entry(path) is not None:
+                result.append({"path": str(path), "status": "symlinked", "detail": "managed outside dev-cockpit"})
+                continue
             status = "missing" if not path.exists() else "preserved"
             if path.exists():
                 content = path.read_bytes()
