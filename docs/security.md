@@ -10,4 +10,6 @@ Shell profiles, Git settings, SSH files, private keys, tokens and provider authe
 
 Only licensed theme data is vendored. The initial setup installs no third-party Herdr/OMP plugins, skills, hooks or MCP servers. Herdr's marketplace is unreviewed and plugins execute host commands; OMP's config discovery can load integrations already present in other agent directories. Inspect those configurations before enabling them.
 
+The opt-in `gestures` profile is the one exception to "no third-party host-executing tooling": it installs the Hammerspoon cask and a Lua bridge that observes trackpad gesture events and presses `ctrl+alt+shift+f1`/`ctrl+alt+shift+f2`. It is never installed by the default profiles, is macOS-only, and requires a manual Accessibility grant before it can observe anything. Review `config/hammerspoon/init.lua` before enabling it, and drop the profile (or run `--uninstall-config`) to remove the bridge.
+
 Existing SSH authentication, host-key checks and YubiKey touch/PIN requirements remain unchanged. No agent forwarding, unattended identity or altered SSH connection policy is configured. Remote acceptance requires the actual host and hardware key.

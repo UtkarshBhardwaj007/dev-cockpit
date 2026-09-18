@@ -92,7 +92,7 @@ def _bases(home, target, use_environment=False):
     return home, config
 
 
-def config_targets(home, target, use_environment=False):
+def config_targets(home, target, use_environment=False, profiles=None):
     home, config = _bases(home, target, use_environment)
     owned = config / "dev-cockpit"
     # Atuin deliberately follows XDG on Windows as well as Unix.
@@ -138,6 +138,11 @@ def config_targets(home, target, use_environment=False):
         paths["config/terminals/ghostty"] = next((path for path in reversed(terminal_candidates) if path.exists()), config / "ghostty/config")
         paths["config/shell/init.sh"] = owned / "init.sh"
         paths["config/btop/btop.conf"] = config / "btop/btop.conf"
+    # The Hammerspoon pinch-to-zoom bridge is macOS-only and opt-in: it is only
+    # installed when the gestures profile is selected (profiles=None means every
+    # target, which tests and status listings use).
+    if target == "macos" and (profiles is None or "gestures" in profiles):
+        paths["config/hammerspoon/init.lua"] = home / ".hammerspoon/init.lua"
     return paths, owned / "ownership.json"
 
 
@@ -309,14 +314,14 @@ def _completion_removal_plan(directory):
     return changes
 
 
-def manage_config(home, target, apply=False, uninstall=False, use_environment=False, root=ROOT, python_executable=None, force=False):
+def manage_config(home, target, apply=False, uninstall=False, use_environment=False, root=ROOT, python_executable=None, force=False, profiles=None):
     """Preview/apply or remove only unchanged owned files and profile blocks.
 
     With force=True, files this project created are repaired even when they were
     edited afterwards; the previous content is backed up first. Files the user
     created themselves are never touched, and profile blocks stay conservative.
     """
-    paths, ledger = config_targets(home, target, use_environment)
+    paths, ledger = config_targets(home, target, use_environment, profiles)
     profiles = profile_targets(home, target, use_environment)
     directory = ledger.parent
     environment, environment_data = _render_environment(directory, target, root, python_executable, home)
@@ -424,8 +429,8 @@ def manage_config(home, target, apply=False, uninstall=False, use_environment=Fa
     return changes
 
 
-def configuration_status(home, target, use_environment=False):
-    paths, ledger = config_targets(home, target, use_environment)
+def configuration_status(home, target, use_environment=False, profiles=None):
+    paths, ledger = config_targets(home, target, use_environment, profiles)
     result = []
     try:
         state = _state(ledger)

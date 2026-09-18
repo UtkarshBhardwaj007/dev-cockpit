@@ -178,6 +178,39 @@ class ConfigurationTests(unittest.TestCase):
         self.assertIn(b'bat', behavior.read_bytes())
         self.assertIn(b'prepend_keymap', keymap.read_bytes())
 
+    def test_hammerspoon_bridge_is_macos_and_gestures_only(self):
+        for target in ('linux', 'windows'):
+            paths, _ = config.config_targets(self.home, target, profiles=['gestures'])
+            self.assertNotIn('config/hammerspoon/init.lua', paths)
+        default_macos, _ = config.config_targets(self.home, 'macos', profiles=['core', 'cockpit', 'terminal'])
+        self.assertNotIn('config/hammerspoon/init.lua', default_macos)
+        gestures_macos, _ = config.config_targets(self.home, 'macos', profiles=['gestures'])
+        self.assertEqual(gestures_macos['config/hammerspoon/init.lua'], self.home / '.hammerspoon/init.lua')
+
+    def test_gestures_profile_installs_hammerspoon_bridge(self):
+        self.home = self.base / 'gestures'
+        self.apply('macos', profiles=['gestures'])
+        bridge = self.home / '.hammerspoon/init.lua'
+        self.assertTrue(bridge.is_file())
+        self.assertIn(b'hs.eventtap', bridge.read_bytes())
+        contents = bridge.read_bytes()
+        self.assertIn(b'"f1"', contents)
+        self.assertIn(b'"f2"', contents)
+        self.assertIn(b'"ctrl", "alt", "shift"', contents)
+
+    def test_default_macos_apply_skips_hammerspoon_bridge(self):
+        self.home = self.base / 'default-macos'
+        self.apply('macos', profiles=['core', 'cockpit', 'terminal'])
+        self.assertFalse((self.home / '.hammerspoon/init.lua').exists())
+
+    def test_user_hammerspoon_init_is_preserved(self):
+        self.home = self.base / 'hammerspoon-existing'
+        existing = self.home / '.hammerspoon/init.lua'
+        existing.parent.mkdir(parents=True)
+        existing.write_bytes(b'-- my own hammerspoon config\n')
+        self.apply('macos', profiles=['gestures'])
+        self.assertEqual(existing.read_bytes(), b'-- my own hammerspoon config\n')
+
     def test_malformed_markers_fail_before_any_config_write(self):
         self.home.mkdir()
         profile = self.home / '.zshrc'
