@@ -53,6 +53,29 @@ def _read(command):
     return subprocess.run([str(x) for x in command], capture_output=True, text=True, check=False)
 
 
+def _accessible(path, predicate):
+    """Return whether *path* passes a filesystem probe without crossing a permission boundary.
+
+    Package discovery is best-effort.  In particular, a process can inherit a
+    service-account LOCALAPPDATA after a Windows installer has run; probing that
+    account's WindowsApps directory must never make the user's setup fail.
+    """
+    try:
+        return predicate(path)
+    except OSError:
+        return False
+
+
+def _windows_local_appdata(home):
+    """Return candidate LocalAppData roots, always including the selected user home."""
+    home = Path(home)
+    fallback = home / 'AppData/Local'
+    configured = os.environ.get('LOCALAPPDATA')
+    candidates = [Path(configured)] if configured else []
+    candidates.append(fallback)
+    return list(dict.fromkeys(candidates))
+
+
 def refresh_path(target, home=None):
     """Refresh this process after package installation without changing profiles."""
     home = Path(home or Path.home())
@@ -71,15 +94,15 @@ def refresh_path(target, home=None):
                     pass
         except ImportError:
             pass
-        local = Path(os.environ.get('LOCALAPPDATA', home / 'AppData/Local'))
-        paths += [local / 'Microsoft/WinGet/Links', local / 'Microsoft/WindowsApps',
-                  home / 'AppData/Roaming/npm']
+        for local in _windows_local_appdata(home):
+            paths += [local / 'Microsoft/WinGet/Links', local / 'Microsoft/WindowsApps']
+        paths += [home / 'AppData/Roaming/npm']
     else:
         paths += [Path('/opt/homebrew/bin'), Path('/usr/local/bin'), Path('/home/linuxbrew/.linuxbrew/bin'),
                   Path('/Applications/Ghostty.app/Contents/MacOS'), home / 'Applications/Ghostty.app/Contents/MacOS']
     separator = os.pathsep
     old = os.environ.get('PATH', '').split(separator)
-    additions = [str(p) for p in paths if p.is_dir() and str(p) not in old]
+    additions = [str(p) for p in paths if _accessible(p, Path.is_dir) and str(p) not in old]
     if additions:
         os.environ['PATH'] = separator.join(additions + old)
     return os.environ.get('PATH', '')
@@ -98,16 +121,18 @@ def _known_paths(tool, target, home):
     elif target == 'linux':
         paths += [Path('/home/linuxbrew/.linuxbrew/bin') / name, Path('/snap/bin') / name]
     else:
-        local = Path(os.environ.get('LOCALAPPDATA', home / 'AppData/Local'))
+        local_paths = _windows_local_appdata(home)
         program = Path(os.environ.get('ProgramFiles', 'C:/Program Files'))
-        paths += [local / 'Microsoft/WinGet/Links' / (name + suffix)]
+        paths += [local / 'Microsoft/WinGet/Links' / (name + suffix) for local in local_paths]
         locations = {'git': ['Git/cmd/git.exe', 'Git/bin/git.exe'], 'gh': ['GitHub CLI/gh.exe'],
                      'wezterm': ['WezTerm/wezterm.exe'], 'starship': ['starship/bin/starship.exe']}
         paths += [program / p for p in locations.get(name, [])]
         if name == 'omp':
             paths += [home / '.omp/bin/omp.exe', home / '.bun/bin/omp.exe']
         if name == 'herdr':
-            paths += [local / 'herdr/bin/herdr.exe', local / 'herdr/current/herdr.exe', home / '.herdr/bin/herdr.exe']
+            paths += [candidate for local in local_paths for candidate in
+                      (local / 'herdr/bin/herdr.exe', local / 'herdr/current/herdr.exe')]
+            paths += [home / '.herdr/bin/herdr.exe']
     return paths
 
 
@@ -121,7 +146,7 @@ def find_tool(tool, target, home=None):
     if found:
         return found
     for candidate in _known_paths({'binary': name}, target, home):
-        if candidate.is_file() and (target == 'windows' or os.access(candidate, os.X_OK)):
+        if _accessible(candidate, Path.is_file) and (target == 'windows' or os.access(candidate, os.X_OK)):
             return str(candidate)
     return None
 
@@ -338,12 +363,22 @@ def _font_dirs(target, home):
     if target == 'macos':
         return [home / 'Library/Fonts', Path('/Library/Fonts')]
     if target == 'windows':
-        return [Path(os.environ.get('LOCALAPPDATA', home / 'AppData/Local')) / 'Microsoft/Windows/Fonts', Path(os.environ.get('WINDIR', 'C:/Windows')) / 'Fonts']
+        return [local / 'Microsoft/Windows/Fonts' for local in _windows_local_appdata(home)] + [Path(os.environ.get('WINDIR', 'C:/Windows')) / 'Fonts']
     return [home / '.local/share/fonts', home / '.fonts', Path('/usr/share/fonts'), Path('/usr/local/share/fonts')]
 
 
 def _font_present(target, home):
-    return any(any(p.rglob('JetBrainsMonoNerdFont-Regular.ttf')) for p in _font_dirs(target, home) if p.is_dir())
+    for directory in _font_dirs(target, home):
+        if not _accessible(directory, Path.is_dir):
+            continue
+        try:
+            if any(directory.rglob('JetBrainsMonoNerdFont-Regular.ttf')):
+                return True
+        except OSError:
+            # A protected system font directory is not evidence that the user
+            # has this font, and is never fatal to package discovery.
+            continue
+    return False
 
 
 def _font_registered(home):
