@@ -94,7 +94,7 @@ class CliSetupTests(unittest.TestCase):
     @unittest.mock.patch("dev_cockpit.cli.configuration.generate_completions", return_value=[])
     @unittest.mock.patch("dev_cockpit.cli.packages.launch_gesture_bridge", return_value=None)
     def test_setup_install_starts_default_gesture_bridge(self, launch, gen, run):
-        with unittest.mock.patch.dict(os.environ, {"HOME": str(self.home)}):
+        with unittest.mock.patch("dev_cockpit.cli.Path.home", return_value=self.home):
             cli._setup(["--install"])
         launch.assert_called_once_with(cli.host_platform(), home=self.home)
 
