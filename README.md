@@ -28,6 +28,8 @@ These commands execute code from this public repository. For inspection before e
 
 Requires **Python 3.9+**. The launcher provisions Python (plus Homebrew on macOS/Linux, or WinGet on Windows) automatically when missing. See [prerequisites](docs/customization.md#prerequisites).
 
+On Windows, run the command from your normal, non-elevated user PowerShell. The launcher tolerates a stale or service-account `LOCALAPPDATA` value left by an installer and still searches your own `%USERPROFILE%\AppData\Local` paths. If an installer changes PATH, reopen PowerShell after setup.
+
 ## Optional add-ons
 
 `history` (atuin), `extras` (btop) and `gestures` (Hammerspoon trackpad pinch-to-zoom for Herdr panes on macOS) are **not** installed by default — they remain opt-in profiles. From a checked-out repository on macOS/Linux:

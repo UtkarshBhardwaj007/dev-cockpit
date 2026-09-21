@@ -38,10 +38,19 @@ class CliSetupTests(unittest.TestCase):
             self.assertFalse(self.home.exists())
 
     def test_doctor_returns_integer_and_reports_tools(self):
-        code, out = run(["--doctor", "--profile", "core"], self.home)
+        # The assertion is about doctor output shape, not whatever happens to
+        # be installed on the machine running the suite.
+        def deterministic_doctor(*_args, **_kwargs):
+            print("FOUND present-tool /fixture")
+            print("MISSING absent-tool")
+            return 1
+
+        with unittest.mock.patch("dev_cockpit.cli.packages.doctor", side_effect=deterministic_doctor) as doctor:
+            code, out = run(["--doctor", "--profile", "core"], self.home)
         self.assertIsInstance(code, int)
         self.assertIn("FOUND", out)
         self.assertIn("MISSING", out)
+        doctor.assert_called_once()
 
     def test_profile_choices_are_validated(self):
         with self.assertRaises(SystemExit):

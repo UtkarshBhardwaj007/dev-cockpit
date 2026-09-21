@@ -270,6 +270,43 @@ class PackageTests(unittest.TestCase):
         with patch('dev_cockpit.packages._receipt', return_value={'files': {'font.ttf': 'hash'}}), patch('dev_cockpit.packages._receipt_condition', return_value='complete'), patch('dev_cockpit.packages._font_registered', return_value=False):
             self.assertIsNone(packages._present(tool, self.home))
 
+    def test_windows_protected_inherited_localappdata_is_ignored(self):
+        """Regression for #4: service-profile WindowsApps may deny traversal."""
+        protected = Path('C:/Windows/system32/config/systemprofile/AppData/Local')
+        user_local = self.home / 'AppData/Local'
+        user_winget = user_local / 'Microsoft/WinGet/Links'
+        user_winget.mkdir(parents=True)
+        previous_is_dir = Path.is_dir
+
+        def is_dir(path):
+            if str(path).startswith(str(protected)):
+                raise PermissionError(5, 'Access is denied', str(path))
+            return previous_is_dir(path)
+
+        with patch.dict(os.environ, {'LOCALAPPDATA': str(protected)}, clear=False), patch.object(Path, 'is_dir', is_dir):
+            # run_packages calls refresh_path before it inspects or invokes any
+            # installer; this matches the failure point in the report.
+            with patch('dev_cockpit.packages.find_tool', return_value='C:/fixture/git.exe'):
+                result = packages.run_packages([self.tool('git', 'windows')], install=True, home=self.home)
+            refreshed = [Path(entry) for entry in os.environ['PATH'].split(os.pathsep) if entry]
+            self.assertEqual(result, [{'id': 'git', 'status': 'present'}])
+            # Windows may spell this temp path as its 8.3 alias in Path.
+            self.assertTrue(any(entry.exists() and os.path.samefile(entry, user_winget) for entry in refreshed))
+            self.assertFalse(packages._font_present('windows', self.home))
+
+    def test_windows_paths_include_selected_home_when_localappdata_is_foreign(self):
+        foreign = Path('C:/Windows/system32/config/systemprofile/AppData/Local')
+        with patch.dict(os.environ, {'LOCALAPPDATA': str(foreign)}, clear=False):
+            paths = packages._known_paths({'binary': 'git'}, 'windows', self.home)
+        self.assertIn(self.home / 'AppData/Local/Microsoft/WinGet/Links/git.exe', paths)
+
+    def test_windows_herdr_paths_include_each_localappdata_candidate(self):
+        foreign = Path('C:/Windows/system32/config/systemprofile/AppData/Local')
+        with patch.dict(os.environ, {'LOCALAPPDATA': str(foreign)}, clear=False):
+            paths = packages._known_paths({'binary': 'herdr'}, 'windows', self.home)
+        self.assertIn(self.home / 'AppData/Local/herdr/bin/herdr.exe', paths)
+        self.assertIn(self.home / 'AppData/Local/herdr/current/herdr.exe', paths)
+
     def test_gestures_profile_is_macos_only(self):
         self.assertEqual([t['id'] for t, _, _ in packages.package_plan('macos', ['gestures'])], ['hammerspoon'])
         self.assertEqual(packages.package_plan('linux', ['gestures']), [])
