@@ -13,11 +13,13 @@ import shutil
 import stat
 import subprocess
 import tempfile
+import time
 
 from .downloads import download, extract_archive, sha256_file
 
 ROOT = Path(__file__).resolve().parents[1]
-PROFILES = ('core', 'cockpit', 'terminal', 'history', 'extras', 'gestures')
+PROFILES = ('core', 'cockpit', 'terminal', 'history', 'extras')
+WINGET_INSTALL_ATTEMPTS = 3
 
 
 def _json(path):
@@ -47,6 +49,25 @@ def _atomic_json(path, value):
 
 def _run(command, **kwargs):
     return subprocess.run([str(x) for x in command], check=True, **kwargs)
+
+
+def _run_winget_install(command, **kwargs):
+    """Retry a bounded number of WinGet installs for transient CDN failures.
+
+    WinGet can fail after dependency resolution when a release CDN returns a
+    temporary 5xx response.  A later attempt is safe: WinGet recognizes any
+    package that completed before the failed command returned.
+    """
+    for attempt in range(1, WINGET_INSTALL_ATTEMPTS + 1):
+        try:
+            return _run(command, **kwargs)
+        except subprocess.CalledProcessError:
+            if attempt == WINGET_INSTALL_ATTEMPTS:
+                raise
+            delay = 2 ** attempt
+            print('RETRY WinGet install', attempt, 'of', WINGET_INSTALL_ATTEMPTS - 1,
+                  'after failure; retrying in', str(delay) + 's')
+            time.sleep(delay)
 
 
 def _read(command):
@@ -520,7 +541,10 @@ def run_packages(plan, install=False, *, home=None, cache_dir=None):
             _run(_ghostty_command(downloads, cache))
         else:
             env = dict(os.environ, HOMEBREW_NO_AUTO_UPDATE='1', HOMEBREW_NO_INSTALL_UPGRADE='1')
-            _run(command, env=env)
+            if adapter == 'winget':
+                _run_winget_install(command, env=env)
+            else:
+                _run(command, env=env)
         refresh_path(target, home)
         if not _present(tool, home):
             raise ValueError('Installer returned success but ' + tool['id'] + ' was not found; rerun to repair the incomplete installation')
@@ -537,15 +561,14 @@ def gesture_bridge_app(home=None):
     return None
 
 
-def launch_gesture_bridge(target, profiles, *, home=None):
+def launch_gesture_bridge(target, *, home=None):
     """Start Hammerspoon so the pinch-to-zoom bridge is live after install.
 
-    macOS-only and opt-in: returns None on other targets, when the gestures
-    profile is not selected, or when the cask is not installed. The Accessibility
-    grant is manual and cannot be verified from the CLI, so this only launches the
-    app; the bridge itself reports whether it actually started.
+    macOS-only: returns None on other targets or when the cask is not installed.
+    The Accessibility grant is manual and cannot be verified from the CLI, so this
+    only launches the app; the bridge itself reports whether it actually started.
     """
-    if target != 'macos' or 'gestures' not in profiles:
+    if target != 'macos':
         return None
     app = gesture_bridge_app(home)
     if app is None:

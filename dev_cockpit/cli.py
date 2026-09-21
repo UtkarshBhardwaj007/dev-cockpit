@@ -29,7 +29,7 @@ def host_platform():
         raise ValueError("Unsupported OS; supported targets are macOS, Linux and Windows.")
 
 
-PROFILES = ("core", "cockpit", "terminal", "history", "extras", "gestures")
+PROFILES = ("core", "cockpit", "terminal", "history", "extras")
 
 
 def _base_parser():
@@ -82,7 +82,7 @@ def _setup(argv):
         configuration.manage_config(home, target, apply=True, use_environment=not args.home, root=root, force=args.force_config, profiles=profiles)
     packages.run_packages(plan, install=args.install, home=home)
     if args.install:
-        _launch_gesture_bridge(target, profiles, home)
+        _launch_gesture_bridge(target, home)
     if args.uninstall_config:
         # apply=True is required: manage_config only performs removal when apply is set.
         configuration.manage_config(home, target, apply=True, uninstall=True, use_environment=not args.home, root=root)
@@ -93,13 +93,13 @@ def _setup(argv):
     return 0
 
 
-def _launch_gesture_bridge(target, profiles, home):
+def _launch_gesture_bridge(target, home):
     """Start Hammerspoon after install so the gestures bridge is live.
 
-    No-op unless the host is macOS and the gestures profile is selected; the
-    Accessibility grant itself is manual and cannot be verified from here.
+    No-op outside macOS; the Accessibility grant itself is manual and cannot
+    be verified from here.
     """
-    message = packages.launch_gesture_bridge(target, profiles, home=home)
+    message = packages.launch_gesture_bridge(target, home=home)
     if message:
         print(message + ". Grant Hammerspoon Accessibility once (System Settings > "
               "Privacy & Security > Accessibility), then quit and reopen Hammerspoon "
@@ -127,7 +127,7 @@ def _cmd_doctor(argv):
               ("- " + entry["detail"]) if entry.get("detail") else "")
         if entry.get("status") == "error":
             code = 1
-    if target == "macos" and "gestures" in profiles:
+    if target == "macos":
         app = packages.gesture_bridge_app(home)
         print("GESTURE", "FOUND" if app else "MISSING", "Hammerspoon.app", str(app) if app else "")
         if not app:
@@ -149,7 +149,7 @@ def _cmd_update(argv):
     configuration.generate_completions(home, target, use_environment=not args.home, force=args.completions)
     plan = packages.package_plan(target, args.profile or list(DEFAULT_PROFILES))
     packages.run_packages(plan, install=True, home=home)
-    _launch_gesture_bridge(target, args.profile or list(DEFAULT_PROFILES), home)
+    _launch_gesture_bridge(target, home)
     print("Update complete.")
     return 0
 

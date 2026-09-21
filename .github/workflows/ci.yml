@@ -20,6 +20,24 @@ jobs:
           python-version: '3.12'
       - name: Unit and isolated configuration integration tests
         run: python -m unittest discover -s tests -v
+      - name: Default setup end-to-end configuration (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          target="$RUNNER_TEMP/dev-cockpit-e2e"
+          python bootstrap/cockpit.py --apply-config --home "$target"
+          if [ "$RUNNER_OS" = 'macOS' ]; then
+            test -f "$target/.hammerspoon/init.lua"
+          else
+            test ! -e "$target/.hammerspoon/init.lua"
+          fi
+      - name: Default setup end-to-end configuration (Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $target = Join-Path $env:RUNNER_TEMP 'dev-cockpit-e2e'
+          python bootstrap/cockpit.py --apply-config --home $target
+          if (Test-Path (Join-Path $target '.hammerspoon/init.lua')) { throw 'Windows must not install the macOS gesture bridge.' }
       - name: Unix entrypoint and shell syntax
         if: runner.os != 'Windows'
         shell: bash

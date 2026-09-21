@@ -42,11 +42,7 @@ Inside Yazi, `Enter` opens text and code files in `$EDITOR` (set to `nvim`, `vim
 
 ## Trackpad pinch-to-zoom for Herdr panes (macOS)
 
-Herdr zooms the focused pane from its right-click menu or `prefix+z`. A trackpad pinch is an AppKit gesture event that reaches the terminal emulator, never the pty, so Herdr and its plugins cannot observe it. Dev Cockpit therefore ships an opt-in `gestures` profile that installs [Hammerspoon](https://www.hammerspoon.org/) and a small bridge: pinch out zooms the focused pane, pinch in unzooms it, and both work in Ghostty and WezTerm.
-
-```sh
-sh bootstrap/setup.sh --install --apply-config --profile gestures
-```
+Herdr zooms the focused pane from its right-click menu or `prefix+z`. A trackpad pinch is an AppKit gesture event that reaches the terminal emulator, never the pty, so Herdr and its plugins cannot observe it. The default macOS setup installs [Hammerspoon](https://www.hammerspoon.org/) and a small bridge: pinch out zooms the focused pane, pinch in unzooms it, and both work in Ghostty and WezTerm.
 
 This installs the Hammerspoon cask, launches it, writes `~/.hammerspoon/init.lua`, and adds `ctrl+alt+shift+f1`/`ctrl+alt+shift+f2` bindings to Herdr's `config.toml`. The bridge watches gesture events and forwards that synthetic chord to the frontmost terminal; Herdr maps it to `pane zoom --on` / `--off`, so the command runs inside the focused pane and targets that pane's own session (including named sessions such as `dev-cockpit`). The chord is used instead of bare F13/F14 because Ghostty cannot encode F13/F14 — its legacy key table stops at F12 and it does not enable the kitty keyboard protocol — while `ctrl+alt+shift+F1/F2` is encoded as `ESC [ 1;8P`/`ESC [ 1;8Q` and decoded by Herdr. Ghostty and WezTerm claim no F-key bindings by default.
 
@@ -59,7 +55,7 @@ If Hammerspoon was already running when the installer wrote `~/.hammerspoon/init
 
 Herdr reads `config.toml` at startup and does not watch it, so a session that was already running when the installer rewrote the file keeps the old bindings. Reload it with `herdr server reload-config` (add `--session dev-cockpit` before the subcommand when you use a named session), or restart Herdr. Without this the pinch reaches Herdr but no binding matches it.
 
-`gestures` is macOS-only; `--profile gestures` is a no-op on Linux and Windows. Because this profile also selects config, add `--profile gestures` to your usual `dev` or `dev-update` profile list to keep the bridge refreshed; without it an already-installed bridge is left untouched. `--uninstall-config` removes the bridge along with the rest of the managed config; the Hammerspoon cask itself is left installed like every other package.
+The bridge is macOS-only and is installed and refreshed by the normal default setup. Linux's Touchégg is X11-only and needs a system input daemon; no equivalent supported Windows integration was found, so neither platform installs a gesture bridge. `--uninstall-config` removes the macOS bridge along with the rest of the managed config; the Hammerspoon cask itself is left installed like every other package.
 
 ## Theme and existing configuration
 
@@ -72,7 +68,6 @@ The initial palette is Catppuccin Mocha. In Starship, change the palette to `cat
 ## Optional tooling
 
 - Atuin: `--profile history` installs the binary only. Review storage and shell capture before adding its shell initialization; sync and account creation stay explicit.
-- Hammerspoon: `--profile gestures` installs the cask and the Dev Cockpit pinch-to-zoom bridge on macOS only. It runs host-level Lua and needs the Accessibility permission; see the pinch-to-zoom section above.
 - direnv: initially omitted because mise also handles project environments; never automatically approve `.envrc`.
 - Mem0: not installed; compare OMP built-in memory first. Local summary processing can still call a hosted model.
 - Graphify: not installed; choose a single repo and benchmark local code extraction before adding its MCP server or hooks.

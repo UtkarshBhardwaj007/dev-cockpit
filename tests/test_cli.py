@@ -53,8 +53,9 @@ class CliSetupTests(unittest.TestCase):
         doctor.assert_called_once()
 
     def test_profile_choices_are_validated(self):
-        with self.assertRaises(SystemExit):
-            run(["--profile", "bogus"], self.home)
+        for profile in ("bogus", "gestures"):
+            with self.assertRaises(SystemExit):
+                run(["--profile", profile], self.home)
 
     def test_dry_run_and_mutation_conflict(self):
         with self.assertRaises(SystemExit):
@@ -92,16 +93,16 @@ class CliSetupTests(unittest.TestCase):
     @unittest.mock.patch("dev_cockpit.cli.packages.run_packages", return_value=[])
     @unittest.mock.patch("dev_cockpit.cli.configuration.generate_completions", return_value=[])
     @unittest.mock.patch("dev_cockpit.cli.packages.launch_gesture_bridge", return_value=None)
-    def test_setup_install_passes_selected_profiles_to_gesture_bridge(self, launch, gen, run):
-        with unittest.mock.patch.dict(os.environ, {"HOME": str(self.home)}):
-            cli._setup(["--install", "--profile", "gestures"])
-        self.assertEqual(launch.call_args[0][1], ["gestures"])
+    def test_setup_install_starts_default_gesture_bridge(self, launch, gen, run):
+        with unittest.mock.patch("dev_cockpit.cli.Path.home", return_value=self.home):
+            cli._setup(["--install"])
+        launch.assert_called_once_with(cli.host_platform(), home=self.home)
 
     @unittest.mock.patch("dev_cockpit.cli.packages.launch_gesture_bridge", return_value="launched Hammerspoon")
     def test_gesture_bridge_helper_prints_accessibility_reminder(self, launch):
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
-            cli._launch_gesture_bridge("macos", ["gestures"], self.home)
+            cli._launch_gesture_bridge("macos", self.home)
         text = out.getvalue()
         self.assertIn("Accessibility", text)
         # Reload Config reloads Lua but does not restart the process, so it does
@@ -112,7 +113,7 @@ class CliSetupTests(unittest.TestCase):
     def test_gesture_bridge_helper_is_quiet_when_not_applicable(self, launch):
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
-            cli._launch_gesture_bridge("linux", ["gestures"], self.home)
+            cli._launch_gesture_bridge("linux", self.home)
         self.assertEqual(out.getvalue(), "")
 
     def test_subcommands_dispatch_mobile(self):
@@ -221,12 +222,12 @@ class SubcommandTests(unittest.TestCase):
         self.assertIn("CONFIG", text)
 
     @unittest.mock.patch("dev_cockpit.cli.packages.gesture_bridge_app", return_value=Path("/Applications/Hammerspoon.app"))
-    def test_doctor_gestures_profile_reports_hammerspoon(self, app):
+    def test_doctor_default_reports_hammerspoon_on_macos(self, app):
         if cli.host_platform() != "macos":
-            self.skipTest("the gestures profile is macOS-only")
+            self.skipTest("Hammerspoon is macOS-only")
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
-            cli.main(["doctor", "--profile", "gestures", "--home", str(self.home)])
+            cli.main(["doctor", "--home", str(self.home)])
         text = out.getvalue()
         self.assertIn("GESTURE", text)
         self.assertIn("Hammerspoon.app", text)

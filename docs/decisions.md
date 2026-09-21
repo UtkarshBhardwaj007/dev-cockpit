@@ -14,7 +14,7 @@ Recorded 2026-09-10. This repository implements a personal setup, with platform 
 | Package manager | Provisional | Homebrew for Unix CLI tools; WinGet on Windows |
 | Runtime | First implementation | Python 3.9+ standard library for shared installer logic |
 | File explorer | Provisional | Yazi as a normal Herdr pane; no third-party plugin |
-| Pane zoom gesture | Implemented, opt-in | Hammerspoon gesture bridge presses Herdr `ctrl+alt+shift+f1`/`f2` bindings (Ghostty cannot encode F13/F14); macOS-only `gestures` profile |
+| Pane zoom gesture | Implemented by default on macOS | Hammerspoon gesture bridge presses Herdr `ctrl+alt+shift+f1`/`f2` bindings (Ghostty cannot encode F13/F14); Linux/Windows intentionally have no bridge |
 | Startup | Provisional | Explicit `dev` function; normal terminal remains usable |
 | Memory | Provisional | Off initially; evaluate OMP built-in memory before Mem0 |
 | Code graph | Provisional | Graphify opt-in, project-specific, after a benchmark |
