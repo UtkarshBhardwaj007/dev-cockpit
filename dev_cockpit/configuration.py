@@ -146,10 +146,9 @@ def config_targets(home, target, use_environment=False, profiles=None):
         paths["config/terminals/ghostty"] = next((path for path in reversed(terminal_candidates) if path.exists()), config / "ghostty/config")
         paths["config/shell/init.sh"] = owned / "init.sh"
         paths["config/btop/btop.conf"] = config / "btop/btop.conf"
-    # The Hammerspoon pinch-to-zoom bridge is macOS-only and opt-in: it is only
-    # installed when the gestures profile is selected (profiles=None means every
-    # target, which tests and status listings use).
-    if target == "macos" and (profiles is None or "gestures" in profiles):
+    # The Hammerspoon pinch-to-zoom bridge is a default macOS capability.
+    # Linux and Windows deliberately have no equivalent bridge.
+    if target == "macos":
         paths["config/hammerspoon/init.lua"] = home / ".hammerspoon/init.lua"
     return paths, owned / "ownership.json"
 

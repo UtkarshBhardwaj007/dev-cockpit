@@ -30,13 +30,14 @@ Requires **Python 3.9+**. The launcher provisions Python (plus Homebrew on macOS
 
 On Windows, run the command from your normal, non-elevated user PowerShell. The launcher tolerates a stale or service-account `LOCALAPPDATA` value left by an installer and still searches your own `%USERPROFILE%\AppData\Local` paths. If an installer changes PATH, reopen PowerShell after setup.
 
+WinGet package downloads are retried twice after a failed attempt (three total attempts) to tolerate temporary CDN errors such as HTTP 504. If all attempts fail, rerun the same command; completed packages are detected and skipped.
+
 ## Optional add-ons
 
-`history` (atuin), `extras` (btop) and `gestures` (Hammerspoon trackpad pinch-to-zoom for Herdr panes on macOS) are **not** installed by default — they remain opt-in profiles. From a checked-out repository on macOS/Linux:
+`history` (atuin) and `extras` (btop) are **not** installed by default — they remain opt-in profiles. From a checked-out repository on macOS/Linux:
 
 ```sh
 sh bootstrap/setup.sh --install --profile history --profile extras
-sh bootstrap/setup.sh --install --apply-config --profile gestures
 ```
 
 On Windows:
@@ -67,14 +68,13 @@ A file this project created is repaired on every install, including when it was 
 
 | Profile | Contents | Default | Installer coverage |
 |---|---|---|---|
-| `core` | git, gh, ripgrep, fd, fzf, zoxide, lazygit, delta, yazi, starship, mise, bat, eza, jq, uv, direnv | yes | Homebrew on Unix; WinGet on Windows |
+| `core` | git, gh, ripgrep, fd, fzf, zoxide, lazygit, delta, yazi, starship, mise, bat, eza, jq, uv, direnv; Hammerspoon gesture bridge on macOS | yes | Homebrew on Unix; WinGet on Windows; Hammerspoon cask on macOS only |
 | `cockpit` | Herdr and OMP | yes | Release download on Unix and Windows (binaries to `~/.local/bin`) |
 | `terminal` | Ghostty on Unix, WezTerm on Windows | yes | macOS cask / Windows WinGet; Linux installs via distro package or pinned .deb on Ubuntu/Debian/Arch/openSUSE, else prints guidance |
 | `history` | Atuin | no (opt-in) | Homebrew / WinGet; no sync, import or shell capture automatically enabled |
 | `extras` | btop | no (opt-in) | Homebrew on Unix; not available on Windows |
-| `gestures` | Hammerspoon (macOS only) | no (opt-in) | Homebrew cask; installs the Dev Cockpit pinch-to-zoom bridge for Herdr panes |
 
-Profiles select packages, not config: `--apply-config` applies the common themed configuration set. The `gestures` profile is the one exception — it also installs the macOS Hammerspoon bridge, because that bridge executes host commands and stays opt-in. Repeat `--profile` on Unix, or use `-Profile core,cockpit` on Windows. `--install` preflights selected missing manual adapters and stops before package changes if one is required. Package installation skips binaries already on PATH; version compatibility is not yet enforced.
+Profiles select packages, not config: `--apply-config` applies the common themed configuration set, including the Hammerspoon bridge on macOS. Linux and Windows have no gesture bridge because the available Linux option is X11-only and system-daemon based, and no equivalent supported Windows integration was found. Repeat `--profile` on Unix, or use `-Profile core,cockpit` on Windows. `--install` preflights selected missing manual adapters and stops before package changes if one is required. Package installation skips binaries already on PATH; version compatibility is not yet enforced.
 
 ## Next commands
 

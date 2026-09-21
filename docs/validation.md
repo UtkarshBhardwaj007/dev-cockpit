@@ -18,7 +18,7 @@ The CI preview does not install the entire package stack. Config integration use
 4. Exercise real package installation on disposable machines, twice, including failure/retry and PATH refresh.
 5. Create Yazi + OMP + shell Herdr layout; verify startup, cwd, resize, focus, file opening, detach and reboot restore.
 6. Validate Ghostty/WezTerm fonts, key sequences, truecolor, clipboard and images on all three desktops.
-7. On macOS, run the `gestures` profile, grant Hammerspoon Accessibility, quit and reopen Hammerspoon (macOS caches the grant for an already-running process), reload Herdr's config (`herdr server reload-config`), and confirm pinch-out/pinch-in zoom the focused Herdr pane in both Ghostty and WezTerm, including a named `dev-cockpit` session. Press `ctrl+alt+cmd+z` and confirm the alert reports "tap running, Accessibility granted, frontmost: Ghostty".
+7. On macOS, run the default setup, grant Hammerspoon Accessibility, quit and reopen Hammerspoon (macOS caches the grant for an already-running process), reload Herdr's config (`herdr server reload-config`), and confirm pinch-out/pinch-in zoom the focused Herdr pane in both Ghostty and WezTerm, including a named `dev-cockpit` session. Press `ctrl+alt+cmd+z` and confirm the alert reports "tap running, Accessibility granted, frontmost: Ghostty". Linux and Windows intentionally have no gesture bridge.
 8. Validate project-specific LSP/DAP and agent authentication.
 9. Test SSH with the owner's actual YubiKey policy; Windows remote-client limitations remain explicit.
 10. Benchmark optional memory/Graphify only after the core experience is usable.

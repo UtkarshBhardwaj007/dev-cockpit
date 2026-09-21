@@ -474,7 +474,7 @@
     {
       "id": "hammerspoon",
       "binary": null,
-      "profile": "gestures",
+      "profile": "core",
       "platforms": {
         "macos": {
           "adapter": "brew",

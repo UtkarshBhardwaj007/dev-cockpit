@@ -216,6 +216,32 @@ class PackageTests(unittest.TestCase):
                 packages.run_packages([self.tool('git'), self.tool('gh')], install=True, home=self.home)
         self.assertEqual(run.call_count, 1)
 
+    def test_winget_install_retries_a_transient_failure(self):
+        command = self.tool('delta', 'windows')[1]
+        error = subprocess.CalledProcessError(2149122552, command)
+        with patch('dev_cockpit.packages._run', side_effect=[error, subprocess.CompletedProcess(command, 0)] ) as run, patch('dev_cockpit.packages.time.sleep') as sleep:
+            packages._run_winget_install(command, env={})
+        self.assertEqual(run.call_count, 2)
+        sleep.assert_called_once_with(2)
+
+    def test_windows_package_flow_retries_winget_and_continues(self):
+        tool = self.tool('delta', 'windows')
+        error = subprocess.CalledProcessError(2149122552, tool[1])
+        with patch('dev_cockpit.packages.find_tool', side_effect=[None, None, 'C:/fixture/delta.exe']), patch('dev_cockpit.packages._manager_present', return_value=False), patch('dev_cockpit.packages.shutil.which', return_value='C:/fixture/winget.exe'), patch('dev_cockpit.packages._run', side_effect=[error, subprocess.CompletedProcess(tool[1], 0)]) as run, patch('dev_cockpit.packages.time.sleep') as sleep:
+            result = packages.run_packages([tool], install=True, home=self.home)
+        self.assertEqual(result, [{'id': 'delta', 'status': 'installed'}])
+        self.assertEqual(run.call_count, 2)
+        sleep.assert_called_once_with(2)
+
+    def test_winget_install_stops_after_bounded_retries(self):
+        command = self.tool('delta', 'windows')[1]
+        error = subprocess.CalledProcessError(2149122552, command)
+        with patch('dev_cockpit.packages._run', side_effect=error) as run, patch('dev_cockpit.packages.time.sleep') as sleep:
+            with self.assertRaises(subprocess.CalledProcessError):
+                packages._run_winget_install(command, env={})
+        self.assertEqual(run.call_count, packages.WINGET_INSTALL_ATTEMPTS)
+        self.assertEqual([call.args[0] for call in sleep.call_args_list], [2, 4])
+
     def test_successful_manager_exit_without_installed_package_is_failure(self):
         with patch('dev_cockpit.packages.find_tool', return_value=None), patch('dev_cockpit.packages._manager_present', return_value=False), patch('dev_cockpit.packages.ensure_homebrew'), patch('dev_cockpit.packages._run'):
             with self.assertRaisesRegex(ValueError, 'returned success but git was not found'):
@@ -307,37 +333,37 @@ class PackageTests(unittest.TestCase):
         self.assertIn(self.home / 'AppData/Local/herdr/bin/herdr.exe', paths)
         self.assertIn(self.home / 'AppData/Local/herdr/current/herdr.exe', paths)
 
-    def test_gestures_profile_is_macos_only(self):
-        self.assertEqual([t['id'] for t, _, _ in packages.package_plan('macos', ['gestures'])], ['hammerspoon'])
-        self.assertEqual(packages.package_plan('linux', ['gestures']), [])
-        self.assertEqual(packages.package_plan('windows', ['gestures']), [])
-        command = packages.package_plan('macos', ['gestures'])[0][1]
+    def test_default_profile_includes_hammerspoon_on_macos_only(self):
+        defaults = ['core', 'cockpit', 'terminal']
+        self.assertIn('hammerspoon', [tool['id'] for tool, _, _ in packages.package_plan('macos', defaults)])
+        self.assertNotIn('hammerspoon', [tool['id'] for tool, _, _ in packages.package_plan('linux', defaults)])
+        self.assertNotIn('hammerspoon', [tool['id'] for tool, _, _ in packages.package_plan('windows', defaults)])
+        command = next(command for tool, command, _ in packages.package_plan('macos', defaults) if tool['id'] == 'hammerspoon')
         self.assertEqual(command, ['brew', 'install', '--cask', 'hammerspoon'])
 
-    def test_launch_gesture_bridge_is_macos_and_gestures_only(self):
+    def test_launch_gesture_bridge_is_macos_only(self):
         with patch('dev_cockpit.packages._read') as read:
-            self.assertIsNone(packages.launch_gesture_bridge('linux', ['gestures']))
-            self.assertIsNone(packages.launch_gesture_bridge('windows', ['gestures']))
-            self.assertIsNone(packages.launch_gesture_bridge('macos', ['core']))
+            self.assertIsNone(packages.launch_gesture_bridge('linux'))
+            self.assertIsNone(packages.launch_gesture_bridge('windows'))
             read.assert_not_called()
 
     def test_launch_gesture_bridge_opens_hammerspoon_when_installed(self):
         app = Path('/Applications/Hammerspoon.app')
         with patch('dev_cockpit.packages.gesture_bridge_app', return_value=app), patch('dev_cockpit.packages._read', return_value=subprocess.CompletedProcess([], 0, '', '')) as read:
-            message = packages.launch_gesture_bridge('macos', ['gestures'])
+            message = packages.launch_gesture_bridge('macos')
         self.assertEqual(message, 'launched Hammerspoon')
         read.assert_called_once_with(['open', '-a', str(app)])
 
     def test_launch_gesture_bridge_skips_when_app_is_absent(self):
         with patch('dev_cockpit.packages.gesture_bridge_app', return_value=None), patch('dev_cockpit.packages._read') as read:
-            self.assertIsNone(packages.launch_gesture_bridge('macos', ['gestures']))
+            self.assertIsNone(packages.launch_gesture_bridge('macos'))
         read.assert_not_called()
 
     def test_launch_gesture_bridge_reports_launch_failure(self):
         app = Path('/Applications/Hammerspoon.app')
         failed = subprocess.CompletedProcess([], 1, '', 'not permitted')
         with patch('dev_cockpit.packages.gesture_bridge_app', return_value=app), patch('dev_cockpit.packages._read', return_value=failed):
-            message = packages.launch_gesture_bridge('macos', ['gestures'])
+            message = packages.launch_gesture_bridge('macos')
         self.assertEqual(message, 'could not launch Hammerspoon: not permitted')
 
     def test_each_download_is_https_pinned_and_supported_native_assets_exist(self):
