@@ -134,6 +134,24 @@ def _cmd_doctor(argv):
             code = 1
         print("GESTURE", "MANUAL", "Accessibility must be granted by hand in System Settings > "
               "Privacy & Security > Accessibility, then quit and reopen Hammerspoon")
+    from . import editor
+    settings = editor.resolve_editor_settings(home, target, os.environ)
+    editor_health = editor.doctor_editor(settings, home=home, target=target,
+                                         environment=os.environ)
+    print("EDITOR", editor_health["status"].upper(), editor_health["backend"],
+          editor_health.get("binary") or "",
+          editor_health.get("version") or editor_health.get("detail") or "")
+    if target == "macos" and editor_health["status"] != "ready":
+        # The installed core profile promises an editor on macOS, so a missing
+        # or broken Fresh binary is an error there.
+        code = 1
+    elif editor_health["status"] != "ready":
+        # Unqualified optional platforms are informational: the classic layout
+        # and the existing editor remain available.
+        print("EDITOR INFO Fresh integration is experimental on this platform; "
+              "run `dev editor doctor` for details. The classic layout and your existing editor remain available.")
+    if target == "macos":
+        print("EDITOR INFO Run `dev editor doctor .` for routing, language packs and recovery guidance.")
     return code
 
 
@@ -145,7 +163,12 @@ def _cmd_update(argv):
     args = parser.parse_args(argv)
     home = args.home.absolute() if args.home else Path.home()
     target = host_platform()
-    configuration.manage_config(home, target, apply=True, use_environment=not args.home, force=True, profiles=args.profile or list(DEFAULT_PROFILES))
+    root = ROOT
+    if os.environ.get("DEV_COCKPIT_DEPLOY_RUNTIME"):
+        root = runtime.deploy_runtime(ROOT, home)
+    configuration.manage_config(home, target, apply=True, use_environment=not args.home,
+                                force=True, profiles=args.profile or list(DEFAULT_PROFILES),
+                                root=root, python_executable=sys.executable)
     configuration.generate_completions(home, target, use_environment=not args.home, force=args.completions)
     plan = packages.package_plan(target, args.profile or list(DEFAULT_PROFILES))
     packages.run_packages(plan, install=True, home=home)
@@ -199,9 +222,138 @@ def _cmd_open(argv):
     parser = argparse.ArgumentParser(prog="dev-open", description="Open a project in a Herdr cockpit workspace.")
     parser.add_argument("project", nargs="?", type=Path, default=Path.cwd(),
                         help="Project directory to open (default: current directory)")
+    parser.add_argument("--layout", choices=("code", "classic"), default="classic",
+                        help="Workspace layout; code is opt-in until Fresh qualification is complete")
+    args = parser.parse_args(argv)
+    from . import editor, workspace
+    project = args.project.resolve()
+    editor_command = None
+    if args.layout == "code":
+        target = host_platform()
+        settings = editor.resolve_editor_settings(Path.home(), target, os.environ)
+        supported, reason = editor.code_layout_support(target, settings=settings)
+        if not supported:
+            # Never activate a layout whose editor pane cannot run: fall back to
+            # the classic workspace with an explicit reason instead of silently
+            # changing the editor or leaving a broken pane.
+            print("CODE LAYOUT UNAVAILABLE", reason, file=sys.stderr)
+            args.layout = "classic"
+        else:
+            editor_command = list(editor.build_editor_pane_command(
+                settings, project, "dev-cockpit", os.environ).argv)
+    return workspace.launch(project, layout=args.layout, editor_command=editor_command)
+
+
+def _cmd_edit(argv):
+    parser = argparse.ArgumentParser(prog="dev-edit", description="Open files with the configured editor backend.")
+    parser.add_argument("--project", type=Path)
+    parser.add_argument("--line", type=int)
+    parser.add_argument("--column", type=int)
+    parser.add_argument("--standalone", action="store_true")
+    parser.add_argument("--wait", action="store_true")
+    parser.add_argument("files", nargs="*")
+    args = parser.parse_args(argv)
+    from . import editor
+    target = host_platform()
+    home = Path.home()
+    project, files = editor.normalize_edit_paths(args.files, project=args.project, cwd=Path.cwd())
+    settings = editor.resolve_editor_settings(home, target, os.environ)
+    effective = editor.effective_editor_settings(settings, target=target, environment=os.environ)
+    notice = editor.describe_editor_substitution(settings, effective, target)
+    if notice:
+        print(notice, file=sys.stderr)
+    request = editor.EditorRequest(
+        effective, project, files, line=args.line, column=args.column,
+        standalone=args.standalone, wait=args.wait,
+        herdr_session=os.environ.get("DEV_COCKPIT_HERDR_SESSION"),
+        environment=os.environ,
+    )
+    return editor.open_files(request)
+
+
+def _tool_layout():
+    # Fresh is still behind the compatibility gate recorded in
+    # docs/editor-compatibility.md; optional tool tabs preserve the classic
+    # workspace until that gate has passed.
+    return "classic", None
+
+
+def _cmd_files(argv):
+    parser = argparse.ArgumentParser(prog="dev-files", description="Open or focus the project's Yazi tab.")
+    parser.add_argument("project", nargs="?", type=Path, default=Path.cwd())
     args = parser.parse_args(argv)
     from . import workspace
-    return workspace.launch(args.project.resolve())
+    layout, editor_command = _tool_layout()
+    return workspace.focus_project_tab(args.project.resolve(), "Files",
+                                       ["yazi", str(args.project.resolve())],
+                                       create_layout=layout,
+                                       editor_command=editor_command)
+
+
+def _cmd_review(argv):
+    parser = argparse.ArgumentParser(prog="dev-review", description="Open or focus the project's LazyGit tab.")
+    parser.add_argument("project", nargs="?", type=Path, default=Path.cwd())
+    args = parser.parse_args(argv)
+    from . import workspace
+    layout, editor_command = _tool_layout()
+    return workspace.focus_project_tab(args.project.resolve(), "Review", ["lazygit"],
+                                       create_layout=layout,
+                                       editor_command=editor_command)
+
+
+def _print_language_status(status):
+    for pack in status:
+        tools = ", ".join(tool["name"] + "=" + tool["status"] for tool in pack["tools"])
+        print("LANGUAGE", pack["id"], pack["status"].upper(),
+              "configured" if pack["configured"] else "available", "-", tools)
+
+
+def _cmd_editor(argv):
+    parser = argparse.ArgumentParser(prog="dev-editor")
+    sub = parser.add_subparsers(dest="command", required=True)
+    doctor = sub.add_parser("doctor", help="Show editor, routing and language status")
+    doctor.add_argument("project", nargs="?", type=Path, default=Path.cwd())
+    languages = sub.add_parser("languages", help="Inspect language packs")
+    language_sub = languages.add_subparsers(dest="language_command", required=True)
+    language_sub.add_parser("list", help="List configured and installed language tools")
+    install = language_sub.add_parser("install", help="Provision selected language packs")
+    install.add_argument("packs", nargs="+")
+    args = parser.parse_args(argv)
+    from . import editor
+    target = host_platform()
+    settings = editor.resolve_editor_settings(Path.home(), target, os.environ)
+    if args.command == "doctor":
+        report = editor.doctor_editor(settings, home=Path.home(), target=target,
+                                      project=args.project.resolve(),
+                                      herdr_session=os.environ.get("DEV_COCKPIT_HERDR_SESSION", "dev-cockpit"),
+                                      environment=os.environ)
+        print("EDITOR", report["status"].upper(), report["backend"],
+              report.get("binary") or "", report.get("version") or report.get("detail") or "")
+        print("SUPPORT", "QUALIFIED" if editor.fresh_qualified(target) else "EXPERIMENTAL",
+              "macOS is the qualified target; Linux and Windows editor integration is experimental."
+              if not editor.fresh_qualified(target) else "Fresh is the qualified default editor on this platform.")
+        print("ROUTING", report["routing"].upper(),
+              "Persistent Fresh routing awaits packaged-release qualification; dev edit runs in the foreground.")
+        print("CONFIG", report["settings_path"])
+        try:
+            effective = editor.effective_editor_settings(settings, target=target, environment=os.environ)
+        except editor.EditorError as error:
+            print("FALLBACK", "UNAVAILABLE", str(error))
+            effective = settings
+        else:
+            notice = editor.describe_editor_substitution(settings, effective, target)
+            if notice:
+                print("FALLBACK", "EXTERNAL", notice)
+        _print_language_status(report["languages"])
+        return 0 if report["status"] == "ready" else 1
+    if args.language_command == "list":
+        _print_language_status(editor.language_pack_status(settings))
+        return 0
+    selected = editor.canonical_language_packs(args.packs)
+    raise editor.EditorError(
+        "Language pack provisioning is not yet qualified; requested: " + ", ".join(selected) +
+        ". No runtimes or global packages were changed."
+    )
 
 
 
@@ -216,6 +368,10 @@ SUBCOMMANDS = {
     "memory": _cmd_memory,
     "graph": _cmd_graph,
     "open": _cmd_open,
+    "edit": _cmd_edit,
+    "files": _cmd_files,
+    "review": _cmd_review,
+    "editor": _cmd_editor,
 }
 
 

@@ -146,10 +146,25 @@ def config_targets(home, target, use_environment=False, profiles=None):
         paths["config/terminals/ghostty"] = next((path for path in reversed(terminal_candidates) if path.exists()), config / "ghostty/config")
         paths["config/shell/init.sh"] = owned / "init.sh"
         paths["config/btop/btop.conf"] = config / "btop/btop.conf"
+    # The owned dev-edit bridge is a POSIX shell wrapper, so every Unix target
+    # gets one; Windows needs a separate .cmd wrapper that is not qualified yet.
+    # It routes Yazi and `fe` through the shared editor logic, and degrades to
+    # the user's existing editor when Fresh is not installed.
+    if target in ("macos", "linux"):
+        paths["config/bridge/dev-edit"] = home / ".local/bin/dev-edit"
     # The Hammerspoon pinch-to-zoom bridge is a default macOS capability.
     # Linux and Windows deliberately have no equivalent bridge.
     if target == "macos":
         paths["config/hammerspoon/init.lua"] = home / ".hammerspoon/init.lua"
+        # Fresh is qualified only on macOS. Its user-editable preferences and
+        # the cockpit backend selection are deliberately absent elsewhere.
+        #
+        # Fresh 0.5.1 reads ~/.config/fresh on macOS even when XDG_CONFIG_HOME
+        # is set (verified with `fresh --cmd config paths`), so this path
+        # deliberately ignores the XDG override that every other managed target
+        # honors. Writing to $XDG_CONFIG_HOME/fresh would be silently unused.
+        paths["config/fresh/config.json"] = home / ".config/fresh/config.json"
+        paths["config/editor/editor.json"] = owned / "editor.json"
     return paths, owned / "ownership.json"
 
 
@@ -224,6 +239,24 @@ def _block_span(content):
 
 def _quote_ps(value):
     return "'" + str(value).replace("'", "''") + "'"
+
+
+def _render_owned_file(source, data, root, python_executable):
+    """Render the executable bridge template; copy all other assets."""
+    entrypoint = Path(root).resolve() / "bootstrap/cockpit.py"
+    python = Path(python_executable or sys.executable).resolve()
+    if source == "config/bridge/dev-edit":
+        replacements = {
+            b"@DEV_COCKPIT_PYTHON@": shlex.quote(str(python)).encode(),
+            b"@DEV_COCKPIT_ENTRYPOINT@": shlex.quote(str(entrypoint)).encode(),
+        }
+    else:
+        return data
+    for marker, value in replacements.items():
+        data = data.replace(marker, value)
+    if b"@DEV_COCKPIT_" in data:
+        raise ValueError("Incomplete executable bridge template: " + source)
+    return data
 
 
 def _profile_content(raw, shell):
@@ -366,7 +399,10 @@ def manage_config(home, target, apply=False, uninstall=False, use_environment=Fa
     with configuration_lock(directory) if apply else nullcontext():
         state = _state(ledger)
         completion_changes = _completion_removal_plan(directory) if uninstall else []
-        desired_files = {destination: (Path(root) / source).read_bytes() for source, destination in paths.items()}
+        desired_files = {
+            destination: _render_owned_file(source, (Path(root) / source).read_bytes(), root, python_executable)
+            for source, destination in paths.items()
+        }
         desired_files[environment] = environment_data
         planned = []
         for destination, desired in desired_files.items():
@@ -382,10 +418,14 @@ def manage_config(home, target, apply=False, uninstall=False, use_environment=Fa
                 elif key in state["files"]:
                     print("PRESERVE changed/missing file:", destination)
                 continue
-            # OMP owns its config and may rewrite it at runtime, so never replace
-            # an existing OMP file. Herdr only rewrites config.toml when the user
-            # changes settings, which changes the hash and is preserved as edited.
-            create_only = destination == paths["config/omp/config.yml"]
+            # OMP and Fresh own their preferences at runtime. editor.json is an
+            # explicit user preference. Even --force-config must preserve edits.
+            create_only_sources = {
+                "config/omp/config.yml",
+                "config/fresh/config.json",
+                "config/editor/editor.json",
+            }
+            create_only = any(paths.get(source) == destination for source in create_only_sources)
             if current is None:
                 planned.append(("create", destination, desired, "files", digest(desired)))
             elif current == desired and owned:
@@ -448,6 +488,8 @@ def manage_config(home, target, apply=False, uninstall=False, use_environment=Fa
                 destination.unlink()
             else:
                 atomic_write(destination, data)
+                if destination == paths.get("config/bridge/dev-edit"):
+                    destination.chmod(destination.stat().st_mode | 0o111)
             if ownership is None:
                 state[section].pop(str(destination), None)
             else:

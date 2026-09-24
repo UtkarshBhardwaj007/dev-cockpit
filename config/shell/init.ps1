@@ -20,7 +20,7 @@ function global:Invoke-DevCockpit {
 # documented forms (`dev open .`, `dev memory show .`, `dev graph init .`) work.
 if (-not (Get-Command dev -ErrorAction SilentlyContinue)) {
     function global:dev {
-        $dcSubcommands = 'launch', 'doctor', 'update', 'uninstall', 'completions', 'mobile', 'memory', 'graph', 'open'
+        $dcSubcommands = 'launch', 'doctor', 'update', 'uninstall', 'completions', 'mobile', 'memory', 'graph', 'open', 'edit', 'files', 'review', 'editor'
         if ($args.Count -gt 0 -and $dcSubcommands -contains $args[0]) { Invoke-DevCockpit @args }
         else { Invoke-DevCockpit launch @args }
     }

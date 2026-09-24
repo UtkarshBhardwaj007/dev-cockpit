@@ -173,6 +173,19 @@
       }
     },
     {
+      "id": "fresh",
+      "binary": "fresh",
+      "profile": "core",
+      "platforms": {
+        "macos": {
+          "package": "fresh-editor",
+          "adapter": "brew"
+        },
+        "linux": null,
+        "windows": null
+      }
+    },
+    {
       "id": "starship",
       "binary": "starship",
       "profile": "core",

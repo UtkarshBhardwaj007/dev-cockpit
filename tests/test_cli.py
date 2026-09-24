@@ -287,3 +287,66 @@ class SubcommandTests(unittest.TestCase):
         self.assertEqual(code, 0)
         launch.assert_called_once()
         self.assertEqual(launch.call_args[0][0], Path.cwd().resolve())
+
+    @unittest.mock.patch("dev_cockpit.workspace.launch", return_value=0)
+    def test_open_code_layout_uses_named_fresh_session(self, launch):
+        with unittest.mock.patch("dev_cockpit.cli.Path.home", return_value=self.home), \
+                unittest.mock.patch("dev_cockpit.cli.host_platform", return_value="macos"), \
+                unittest.mock.patch("dev_cockpit.editor.code_layout_support",
+                                    return_value=(True, "")):
+            code = cli.main(["open", ".", "--layout", "code"])
+        self.assertEqual(code, 0)
+        self.assertEqual(launch.call_args.kwargs["layout"], "code")
+        self.assertEqual(launch.call_args.kwargs["editor_command"][:2], ["fresh", "-a"])
+
+    @unittest.mock.patch("dev_cockpit.workspace.launch", return_value=0)
+    def test_open_code_layout_keeps_classic_when_editor_is_unavailable(self, launch):
+        # An unqualified platform (or a missing Fresh binary) must not activate a
+        # layout whose editor pane cannot run, and must not silently substitute a
+        # different editor.
+        with unittest.mock.patch("dev_cockpit.cli.Path.home", return_value=self.home), \
+                unittest.mock.patch("dev_cockpit.cli.host_platform", return_value="linux"):
+            out = io.StringIO()
+            with contextlib.redirect_stderr(out):
+                code = cli.main(["open", ".", "--layout", "code"])
+        self.assertEqual(code, 0)
+        self.assertEqual(launch.call_args.kwargs["layout"], "classic")
+        self.assertIsNone(launch.call_args.kwargs["editor_command"])
+        self.assertIn("CODE LAYOUT UNAVAILABLE", out.getvalue())
+        self.assertIn("classic layout", out.getvalue())
+
+    @unittest.mock.patch("dev_cockpit.editor.open_files", return_value=7)
+    def test_edit_subcommand_normalizes_literal_file_arguments(self, open_files):
+        file = self.home / "project/file with & quote'.py"
+        file.parent.mkdir(parents=True)
+        file.write_text("pass\n")
+        with unittest.mock.patch("dev_cockpit.cli.Path.home", return_value=self.home):
+            code = cli.main(["edit", "--project", str(file.parent), "--", str(file)])
+        self.assertEqual(code, 7)
+        request = open_files.call_args.args[0]
+        self.assertEqual(request.files, (file.resolve(),))
+        self.assertEqual(request.project, file.parent.resolve())
+
+    @unittest.mock.patch("dev_cockpit.workspace.focus_project_tab", return_value={"created": True})
+    def test_files_and_review_use_dedicated_tabs(self, focus):
+        project = self.home / "project"
+        project.mkdir(parents=True)
+        self.assertEqual(cli.main(["files", str(project)]), {"created": True})
+        self.assertEqual(focus.call_args.args[1], "Files")
+        self.assertEqual(cli.main(["review", str(project)]), {"created": True})
+        self.assertEqual(focus.call_args.args[1], "Review")
+
+    @unittest.mock.patch("dev_cockpit.editor.language_pack_status", return_value=[])
+    @unittest.mock.patch("dev_cockpit.editor.resolve_editor_settings")
+    def test_editor_languages_list_is_read_only(self, settings, status):
+        from dev_cockpit.editor import EditorSettings
+        settings.return_value = EditorSettings()
+        with unittest.mock.patch("dev_cockpit.cli.Path.home", return_value=self.home):
+            self.assertEqual(cli.main(["editor", "languages", "list"]), 0)
+        status.assert_called_once()
+
+    def test_editor_language_install_fails_before_unqualified_changes(self):
+        from dev_cockpit.editor import EditorError
+        with unittest.mock.patch("dev_cockpit.cli.Path.home", return_value=self.home):
+            with self.assertRaisesRegex(EditorError, "not yet qualified"):
+                cli.main(["editor", "languages", "install", "javascript", "go"])

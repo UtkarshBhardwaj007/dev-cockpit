@@ -158,8 +158,39 @@ def workspace_label(project):
     return Path(project).name + " [cockpit:" + key + "]"
 
 
-def layout_tree(project, agent_command, files_command):
+def editor_key(project, session="dev-cockpit"):
+    """Return a stable per-session, per-worktree editor identifier."""
+    from .editor import project_identity
+    return project_identity(project, session)
+
+
+def pane_environment(project, session="dev-cockpit"):
+    project = str(Path(project).resolve())
+    return {
+        "DEV_COCKPIT_PROJECT": project,
+        "DEV_COCKPIT_HERDR_SESSION": session,
+        "DEV_COCKPIT_EDITOR_KEY": editor_key(project, session),
+    }
+
+
+def layout_tree(project, agent_command, files_command=None, *, editor_command=None,
+                session="dev-cockpit", layout="classic"):
     cwd = str(Path(project).resolve())
+    if layout not in ("classic", "code"):
+        raise ValueError("Layout must be 'code' or 'classic'.")
+    if layout == "code":
+        if not editor_command:
+            raise ValueError("The code layout requires an editor command.")
+        context = pane_environment(project, session)
+        return {"type": "split", "direction": "down", "ratio": 0.78,
+                "first": {"type": "split", "direction": "right", "ratio": 0.68,
+                          "first": {"type": "pane", "label": "Editor", "cwd": cwd,
+                                    "command": list(editor_command), "env": context},
+                          "second": {"type": "pane", "label": "OMP", "cwd": cwd,
+                                     "command": list(agent_command), "env": context}},
+                "second": {"type": "pane", "label": "Shell", "cwd": cwd,
+                           "env": context}}
+    files_command = files_command or ["yazi", cwd]
     return {"type": "split", "direction": "down", "ratio": 0.75,
             "first": {"type": "split", "direction": "right", "ratio": 0.72,
                       "first": {"type": "pane", "label": "OMP", "cwd": cwd, "command": agent_command},
@@ -167,23 +198,33 @@ def layout_tree(project, agent_command, files_command):
             "second": {"type": "pane", "label": "Shell", "cwd": cwd}}
 
 
-def ensure_workspace(client, project, agent_command=None, files_command=None):
+def _workspace(client, project):
+    label = workspace_label(project)
+    existing = client.cli("workspace", "list").get("workspaces", [])
+    return next((item for item in existing if item.get("label") == label), None)
+
+
+def ensure_workspace(client, project, agent_command=None, files_command=None, *,
+                     editor_command=None, session="dev-cockpit", layout="classic"):
     project = Path(project).resolve()
     if not project.is_dir():
         raise ValueError("Project directory does not exist: " + str(project))
     label = workspace_label(project)
-    existing = client.cli("workspace", "list").get("workspaces", [])
-    for workspace in existing:
-        if workspace.get("label") == label:
-            client.cli("workspace", "focus", workspace["workspace_id"])
-            return {"created": False, "workspace_id": workspace["workspace_id"], "label": label}
+    existing = _workspace(client, project)
+    if existing:
+        client.cli("workspace", "focus", existing["workspace_id"])
+        return {"created": False, "workspace_id": existing["workspace_id"], "label": label}
     agent_command = agent_command or ["omp"]
     files_command = files_command or ["yazi", str(project)]
     created = client.cli("workspace", "create", "--cwd", str(project), "--label", label, "--no-focus")
     workspace_id = created["workspace"]["workspace_id"]
     try:
-        result = client.request("layout.apply", {"tab_id": created["tab"]["tab_id"], "tab_label": "Cockpit",
-                               "focus": True, "root": layout_tree(project, agent_command, files_command)})
+        result = client.request("layout.apply", {"tab_id": created["tab"]["tab_id"],
+                               "tab_label": "Code" if layout == "code" else "Cockpit",
+                               "focus": True,
+                               "root": layout_tree(project, agent_command, files_command,
+                                                   editor_command=editor_command,
+                                                   session=session, layout=layout)})
     except Exception as error:
         # The new workspace is retained, never blindly closed after an uncertain
         # API result (a process may already be running there).
@@ -191,14 +232,109 @@ def ensure_workspace(client, project, agent_command=None, files_command=None):
     return {"created": True, "workspace_id": workspace_id, "label": label, "layout": result}
 
 
+def ensure_project_tab(client, project, label, command, *, session="dev-cockpit",
+                       create_layout="classic", agent_command=None, editor_command=None):
+    """Create or focus a single-purpose project tab without duplicating it."""
+    project = Path(project).resolve()
+    if not project.is_dir():
+        raise ValueError("Project directory does not exist: " + str(project))
+    workspace = _workspace(client, project)
+    if workspace is None:
+        created_workspace = ensure_workspace(client, project, agent_command=agent_command,
+                                             editor_command=editor_command, session=session,
+                                             layout=create_layout)
+        workspace_id = created_workspace["workspace_id"]
+    else:
+        workspace_id = workspace["workspace_id"]
+    snapshot = client.cli("api", "snapshot").get("snapshot", {})
+    tabs = [tab for tab in snapshot.get("tabs", [])
+            if tab.get("workspace_id") == workspace_id and tab.get("label") == label]
+    if len(tabs) > 1:
+        raise HerdrError("Multiple " + label + " tabs exist in " + workspace_label(project) +
+                         "; no tab was changed. Close or rename the duplicate manually.")
+    if tabs:
+        tab = tabs[0]
+        panes = [pane for pane in snapshot.get("panes", [])
+                 if pane.get("tab_id") == tab["tab_id"] and pane.get("label") == label]
+        if len(panes) != 1:
+            raise HerdrError("The existing " + label + " tab does not contain exactly one managed " +
+                             label + " pane; no process was started or replaced.")
+        client.request("tab.focus", {"tab_id": tab["tab_id"]})
+        client.request("pane.focus", {"pane_id": panes[0]["pane_id"]})
+        return {"created": False, "workspace_id": workspace_id,
+                "tab_id": tab["tab_id"], "label": label}
+    created = client.cli("tab", "create", "--workspace", workspace_id,
+                         "--cwd", str(project), "--label", label, "--no-focus")
+    tab = created["tab"]
+    try:
+        applied = client.request("layout.apply", {
+            "tab_id": tab["tab_id"], "tab_label": label, "focus": True,
+            "root": {"type": "pane", "label": label, "cwd": str(project),
+                     "command": list(command), "env": pane_environment(project, session)},
+        })
+    except Exception as error:
+        raise HerdrError("The " + label + " tab was created, but its command could not be applied. "
+                         "It was preserved for inspection: " + str(error)) from error
+    return {"created": True, "workspace_id": workspace_id,
+            "tab_id": tab["tab_id"], "label": label, "layout": applied}
+
+
+def focus_project_tab(project, label, command, *, session="dev-cockpit",
+                      executable="herdr", env=None, attach=None,
+                      create_layout="classic", agent_command=None,
+                      editor_command=None):
+    """Ensure a project tool tab and attach only when called outside Herdr."""
+    inherited = os.environ if env is None else env
+    client = Herdr(executable, session, env)
+    client.ensure_server()
+    result = ensure_project_tab(client, project, label, command, session=session,
+                                create_layout=create_layout,
+                                agent_command=agent_command,
+                                editor_command=editor_command)
+    print(("Created" if result["created"] else "Focused") + " " + label +
+          " tab in " + workspace_label(project))
+    if attach is None:
+        attach = not (inherited.get("HERDR_ENV") or inherited.get("HERDR_PANE_ID"))
+    if attach:
+        return client.attach()
+    return result
+
+
+def ensure_code_editor(client, project, workspace_id, editor_command, *,
+                       session="dev-cockpit", agent_command=None):
+    """Focus a managed editor pane or add one tab to a classic workspace."""
+    snapshot = client.cli("api", "snapshot").get("snapshot", {})
+    panes = [pane for pane in snapshot.get("panes", [])
+             if pane.get("workspace_id") == workspace_id and pane.get("label") == "Editor"]
+    if len(panes) > 1:
+        raise HerdrError("Multiple managed Editor panes exist in " + workspace_label(project) +
+                         "; no pane was focused or replaced.")
+    if panes:
+        client.request("tab.focus", {"tab_id": panes[0]["tab_id"]})
+        client.request("pane.focus", {"pane_id": panes[0]["pane_id"]})
+        return {"created": False, "workspace_id": workspace_id,
+                "tab_id": panes[0]["tab_id"], "label": "Editor"}
+    return ensure_project_tab(client, project, "Editor", editor_command,
+                              session=session, create_layout="classic",
+                              agent_command=agent_command,
+                              editor_command=editor_command)
+
+
 def launch(project, *, session="dev-cockpit", executable="herdr", attach=True,
-           env=None, agent_command=None, files_command=None):
+           env=None, agent_command=None, files_command=None, editor_command=None,
+           layout="classic"):
+    if layout == "code" and not editor_command:
+        raise ValueError("The code layout requires an editor command.")
     client = Herdr(executable, session, env)
     client.ensure_server()
     if agent_command is None:
         from .intelligence import omp_command
         agent_command = omp_command(Path(project))
-    result = ensure_workspace(client, project, agent_command, files_command)
+    result = ensure_workspace(client, project, agent_command, files_command,
+                              editor_command=editor_command, session=session, layout=layout)
+    if layout == "code" and not result["created"]:
+        ensure_code_editor(client, project, result["workspace_id"], editor_command,
+                           session=session, agent_command=agent_command)
     print(("Created" if result["created"] else "Reusing") + " Herdr workspace: " + result["label"])
     if attach:
         return client.attach()

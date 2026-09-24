@@ -341,6 +341,14 @@ class PackageTests(unittest.TestCase):
         command = next(command for tool, command, _ in packages.package_plan('macos', defaults) if tool['id'] == 'hammerspoon')
         self.assertEqual(command, ['brew', 'install', '--cask', 'hammerspoon'])
 
+    def test_core_installs_fresh_on_qualified_macos_only(self):
+        macos = packages.package_plan('macos', ['core'])
+        fresh = next((item for item in macos if item[0]['id'] == 'fresh'), None)
+        self.assertIsNotNone(fresh)
+        self.assertEqual(fresh[1], ['brew', 'install', 'fresh-editor'])
+        self.assertNotIn('fresh', [tool['id'] for tool, _, _ in packages.package_plan('linux', ['core'])])
+        self.assertNotIn('fresh', [tool['id'] for tool, _, _ in packages.package_plan('windows', ['core'])])
+
     def test_launch_gesture_bridge_is_macos_only(self):
         with patch('dev_cockpit.packages._read') as read:
             self.assertIsNone(packages.launch_gesture_bridge('linux'))

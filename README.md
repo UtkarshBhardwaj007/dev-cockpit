@@ -20,7 +20,7 @@ Windows PowerShell:
 
 This installs:
 
-- **core**: git, gh, ripgrep, fd, fzf, zoxide, lazygit, delta, yazi, starship, mise, bat, eza, jq, uv, direnv (zsh plugins on Unix)
+- **core**: git, gh, ripgrep, fd, fzf, zoxide, lazygit, delta, yazi, starship, mise, bat, eza, jq, uv, direnv (zsh plugins on Unix; Fresh editor on macOS)
 - **cockpit**: herdr + OMP (coding agent + workspace orchestrator)
 - **terminal**: Ghostty (macOS/Linux) or WezTerm (Windows) + JetBrainsMono Nerd Font
 
@@ -68,7 +68,7 @@ A file this project created is repaired on every install, including when it was 
 
 | Profile | Contents | Default | Installer coverage |
 |---|---|---|---|
-| `core` | git, gh, ripgrep, fd, fzf, zoxide, lazygit, delta, yazi, starship, mise, bat, eza, jq, uv, direnv; Hammerspoon gesture bridge on macOS | yes | Homebrew on Unix; WinGet on Windows; Hammerspoon cask on macOS only |
+| `core` | git, gh, ripgrep, fd, fzf, zoxide, lazygit, delta, yazi, starship, mise, bat, eza, jq, uv, direnv; Fresh editor on macOS; Hammerspoon gesture bridge on macOS | yes | Homebrew on Unix; WinGet on Windows; Fresh and Hammerspoon cask on macOS only |
 | `cockpit` | Herdr and OMP | yes | Release download on Unix and Windows (binaries to `~/.local/bin`) |
 | `terminal` | Ghostty on Unix, WezTerm on Windows | yes | macOS cask / Windows WinGet; Linux installs via distro package or pinned .deb on Ubuntu/Debian/Arch/openSUSE, else prints guidance |
 | `history` | Atuin | no (opt-in) | Homebrew / WinGet; no sync, import or shell capture automatically enabled |
@@ -84,6 +84,10 @@ Open Ghostty (or another terminal) and start a new session so the shell function
 |---|---|
 | `dev` | Re-run install and config; idempotent and safe to repeat |
 | `dev open .` | Open the current project in a Herdr cockpit workspace (OMP + Yazi + shell panes) |
+| `dev open . --layout code` | Editor-centric layout: Fresh editor, OMP and shell (macOS with Fresh installed; see below) |
+| `dev edit -- src/app.py` | Open a file in the configured editor backend; `--line`/`--column`/`--wait`/`--standalone` are supported |
+| `dev files .` / `dev review .` | Create or focus the project's Yazi or LazyGit tab |
+| `dev editor doctor .` | Report editor binary, version, support status, routing, fallback and language tools |
 | `dev-doctor` | Check installed binaries and configuration status |
 | `dev-update` | Refresh managed config and install package updates |
 | `dev-uninstall` | Remove unchanged project-owned config; packages stay installed |
@@ -93,13 +97,56 @@ Open Ghostty (or another terminal) and start a new session so the shell function
 | `herdr` | Start the Herdr multiplexer directly |
 | `omp` | Start the OMP coding agent directly |
 | `yazi` / `y` | File manager; `y` returns to the directory you quit in (`q`), `Q` quits without changing it |
-| `fe` | Fuzzy file picker with `bat` preview; opens the pick in `$EDITOR` |
+| `fe` | Fuzzy file picker with `bat` preview; opens the pick through the editor backend (falls back to `$VISUAL`/`$EDITOR`) |
 | `fv` | Fuzzy file picker with `bat` preview; pages the pick with `bat` |
 | `lg` | lazygit |
 | `ll` / `lt` | eza long and tree listings |
 | `dg` | git with delta paging |
 
 Start with `dev-doctor` if a command is missing; it reports PATH and config status. See [shell activation](docs/customization.md#activate-the-shell) and [intelligence](docs/intelligence.md) for details.
+
+## Editing
+
+The managed editor is [Fresh](https://github.com/sinelaw/fresh): an ordinary,
+non-modal editor with menus, mouse input, tabs, line numbers, multiple cursors and
+built-in review tools, so Vim knowledge is not a prerequisite. **macOS is the
+qualified target.** Linux and Windows keep the classic layout and their existing
+editor; Fresh there is experimental. See
+[editor compatibility](docs/editor-compatibility.md) for the current
+qualification status and [editor cheat sheet](docs/editor.md) for shortcuts.
+
+`dev open . --layout code` creates a workspace with the editor at roughly 68% of
+the top row, OMP beside it, and a shell below. Files and Review tabs are created
+only when you ask for them (`dev files .`, `dev review .`), and repeating a
+command focuses the existing tab rather than creating a duplicate. The code
+layout is opt-in and never rebuilds a running workspace: an existing classic
+workspace gains one Editor tab on the first explicit request, and `dev open .`
+reuses what is already running. If the platform is unqualified or the Fresh
+binary is missing, `--layout code` prints `CODE LAYOUT UNAVAILABLE` with the
+reason and keeps the classic workspace instead of creating a broken pane.
+
+Editing routes through one shared Python module, and Yazi plus `fe` go through the
+generated `~/.local/bin/dev-edit` bridge, so a filename with spaces, quotes or a
+newline is passed as one literal argument rather than being re-parsed by a shell.
+
+**Limits in this milestone.** Editor opens run in the foreground; persistent
+routing into a running editor session is not implemented yet, and `dev editor
+doctor` reports `ROUTING FOREGROUND` rather than pretending otherwise. Exact
+locations (`--line`/`--column`) need Fresh and are refused for paths containing
+`:`. That refusal is measured, not defensive: with Fresh 0.5.1, asking for
+`weird:name.py:3` when that file exists opens an **empty buffer** instead of the
+real file at line 3. Language packs are
+listed and inspected, but `dev editor languages install` refuses until runtimes
+and versions are pinned and tested; missing tools never prevent ordinary editing.
+A `.cmd` bridge for native Windows is not qualified, so Windows keeps its existing
+`code -w` Yazi opener.
+
+Editor preferences live in `~/.config/dev-cockpit/editor.json`
+(`%APPDATA%\dev-cockpit\editor.json` on Windows) and are create-only: setup
+preserves edits you make afterwards, including with `--force-config`. An external
+editor is configured there as a JSON argv array. If Fresh is absent, `dev edit`
+and `fe` use your existing `$VISUAL`/`$EDITOR` and say so; with neither available
+they refuse with the repair options.
 
 ## Theme
 
@@ -110,6 +157,7 @@ Start with `dev-doctor` if a command is missing; it reports PATH and config stat
 - Yazi: official Catppuccin Mocha with mauve accents, plus `bat`-paged openers and explicit `q`/`Q`/`b` keybindings (`config/yazi/yazi.toml`, `config/yazi/keymap.toml`).
 - Bat: built-in Catppuccin Mocha theme with grid, changes and italic text.
 - Herdr: built-in Catppuccin with custom Mocha tokens, pane gaps, a wider sidebar and a richer status bar.
+- Fresh: small tested defaults (line numbers on, built-in dark theme, automatic update checks off) in `config/fresh/config.json`. They are installed create-only on macOS, so a later change in the editor's own UI is preserved rather than reset.
 
 Install **JetBrainsMono Nerd Font** separately for the preset's full glyphs. Font installation and desktop visual acceptance are follow-up work. Vendored themes carry their licenses and exact upstream revisions in [licenses/sources.json](licenses/sources.json).
 
@@ -121,6 +169,6 @@ python3 bootstrap/cockpit.py --platform windows --dry-run
 python3 bootstrap/cockpit.py --uninstall-config
 ```
 
-Use `python` or `py -3` on Windows. Uninstall removes only unmodified files owned by this project. User-edited files, packages, shell profiles, agent data and credentials remain. Empty directories and the ownership ledger are retained.
+Use `python` or `py -3` on Windows. Uninstall removes only unmodified files owned by this project. User-edited files, packages, shell profiles, agent data and credentials remain. Empty directories and the ownership ledger are retained. Editor preferences (`editor.json`, `fresh/config.json`) and the generated `dev-edit` bridge follow the same rule: they are create-only and preserved once you edit them.
 
-See [validation](docs/validation.md) before interpreting CI as a claim of full desktop or hardware compatibility.
+See [validation](docs/validation.md) before interpreting CI as a claim of full desktop or hardware compatibility, and [editor compatibility](docs/editor-compatibility.md) for which editor behaviors were actually observed.

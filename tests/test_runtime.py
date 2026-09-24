@@ -25,6 +25,8 @@ class RuntimeTests(unittest.TestCase):
         # copy is self-contained.
         self.assertIn("manifests/tools.json", files)
         self.assertIn("manifests/downloads.json", files)
+        self.assertIn("config/bridge/dev-edit", files)
+        self.assertIn("config/fresh/config.json", files)
 
     def test_runtime_directory_is_predictable(self):
         self.assertEqual(

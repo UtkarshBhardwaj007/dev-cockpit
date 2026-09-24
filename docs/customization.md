@@ -38,7 +38,36 @@ This writes an OMP extension; the upstream documentation explains its location a
 
 Run `dev open .` from a project to create (or reuse) a Herdr workspace with OMP, Yazi and a shell pane, or start `herdr` directly and open a workspace yourself. Yazi does not automatically follow another pane's cwd. Keep `omp` directly available when diagnosing the multiplexer.
 
-Inside Yazi, `Enter` opens text and code files in `$EDITOR` (set to `nvim`, `vim`, `hx` or `nano` when the variable is unset), `b` opens the interactive opener chooser (`bat`, editor, reveal), `q` quits and changes the shell directory, and `Q` quits without changing it. The `fe` and `fv` shell helpers use `fzf` with a `bat` preview to edit or page a file from anywhere.
+Inside Yazi, `Enter` opens text and code files through the managed editor backend — on a qualified macOS setup that is the `dev-edit` bridge into Fresh, and on Linux/Windows it stays `$EDITOR` (set to `nvim`, `vim`, `hx` or `nano` when the variable is unset). `b` opens the interactive opener chooser (`bat`, the managed editor, your external `$VISUAL`/`$EDITOR`, reveal), `q` quits and changes the shell directory, and `Q` quits without changing it. The `fe` and `fv` shell helpers use `fzf` with a `bat` preview to edit or page a file from anywhere. `fe` prefers the `dev-edit` bridge and otherwise keeps the previous `$EDITOR` behavior, and both preserve filenames containing spaces, quotes or newlines by keeping discovery, the picker and the bridge NUL-delimited.
+
+## Editor (Fresh)
+
+The default setup installs the [Fresh](https://github.com/sinelaw/fresh) editor on
+macOS and generates an executable `~/.local/bin/dev-edit` bridge that Yazi and
+`fe` call. `dev open . --layout code` builds the editor-centric layout; the
+classic layout remains the default and is never rebuilt underneath a running
+workspace. Linux and Windows keep the classic layout and their existing editor,
+and their Fresh integration is experimental. Shortcuts are in the
+[editor cheat sheet](editor.md); observed behavior and open qualification items
+are in the [compatibility record](editor-compatibility.md).
+
+Two files are user-owned and installed create-only, so they are never reset by
+`dev`, `dev-update` or `--force-config`:
+
+- `~/.config/fresh/config.json` — Fresh's own preferences (line numbers, theme,
+  update checks). Edit it here or in Fresh's UI; either way later applies leave
+  it alone. This path deliberately ignores `XDG_CONFIG_HOME`: Fresh 0.5.1 reads
+  `~/.config/fresh` on macOS even when that variable is set, so an XDG write
+  would be silently unused.
+- `~/.config/dev-cockpit/editor.json` — the cockpit backend selection. Set
+  `"backend": "external"` with `external_command`/`external_wait_command` JSON
+  argv arrays to use VS Code (`["code", "--reuse-window"]`) or another editor.
+  `$VISUAL`/`$EDITOR` remain untouched and are used as the fallback when Fresh is
+  not installed, and by the separate Yazi `external` opener.
+
+The generated `dev-edit` bridge embeds the deployed runtime path and the selected
+Python interpreter, so it keeps working after a one-line install or `dev-update`.
+It passes each path as one literal argv element; nothing is re-parsed by a shell.
 
 ## Trackpad pinch-to-zoom for Herdr panes (macOS)
 
@@ -63,7 +92,7 @@ The installer stores its Starship config under the platform config directory's `
 
 `dev`, `dev-update` and the one-line launchers repair every file this project created, even if it was edited afterwards (Herdr rewrites its own `config.toml`, for example). The previous content is backed up under `dev-cockpit/backups` before each repair. Files you created yourself are never touched, so a personal `~/.config/starship.toml` or `~/Library/Application Support/com.mitchellh.ghostty/config.ghostty` stays yours. Direct `python3 bootstrap/cockpit.py --apply-config` remains the conservative mode that preserves edited files; add `--force-config` to repair.
 
-The initial palette is Catppuccin Mocha. In Starship, change the palette to `catppuccin_latte` for light mode. Ghostty/WezTerm/Herdr have matching built-in themes; Yazi needs the corresponding licensed theme asset. Editing an installed file hands control back to you: future applies preserve it. Change the repository source to update an unedited managed file.
+The initial palette is Catppuccin Mocha. In Starship, change the palette to `catppuccin_latte` for light mode. Ghostty/WezTerm/Herdr have matching built-in themes; Yazi needs the corresponding licensed theme asset. The managed Fresh defaults use its built-in dark theme for the same reason: no unlicensed theme asset is vendored, and Fresh's own theme can be changed in its UI without the installer reverting it. Editing an installed file hands control back to you: future applies preserve it. Change the repository source to update an unedited managed file.
 
 ## Optional tooling
 
@@ -75,6 +104,6 @@ The initial palette is Catppuccin Mocha. In Starship, change the palette to `cat
 
 ## Troubleshooting
 
-`--doctor` reports PATH presence only. A missing GUI executable may be installed outside PATH; use its platform launcher and verify separately. Reopen terminals after WinGet installs. Homebrew/WinGet failures return nonzero and preserve earlier completed package installs; rerun after fixing the reported error. Packages are not rolled back automatically.
+`--doctor` reports PATH presence only. A missing GUI executable may be installed outside PATH; use its platform launcher and verify separately. On macOS, `dev-doctor` treats a missing Fresh binary as an error because the installed core profile promises an editor; on Linux and Windows the same condition is informational and points at `dev editor doctor`. Reopen terminals after WinGet installs. Homebrew/WinGet failures return nonzero and preserve earlier completed package installs; rerun after fixing the reported error. Packages are not rolled back automatically.
 
 The ownership ledger is `dev-cockpit/ownership.json` under the same platform config directory. Do not edit it to claim ownership of personal files. Invalid ledger JSON or a symlink/junction in the dev-cockpit config directory stops config mutation. Other symlinked targets, such as dotfiles managed by stow or chezmoi, are preserved and skipped; setup prints the shell activation block so you can add it to your dotfiles repository, and `dev-doctor` reports them as `symlinked`. This prototype assumes one installer at a time; concurrent writes are not supported.

@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "backend": "fresh",
+  "external_command": null,
+  "external_wait_command": null,
+  "language_packs": []
+}

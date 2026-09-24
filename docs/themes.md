@@ -11,6 +11,7 @@ The repo applies the Catppuccin Mocha palette across the shell toolchain. Where 
 - **Herdr** — built-in `catppuccin` scheme plus Mocha token overrides, pane gaps, a wider sidebar and a richer tab bar (`config/herdr/config.toml`).
 - **bat** — built-in `Catppuccin Mocha` theme with grid/changes and italic text (`config/bat/config`).
 - **yazi** — vendored Catppuccin Mocha (mauve accent) theme from the Catppuccin yazi port (`config/yazi/theme.toml`), plus `bat`-paged openers and explicit keybindings (`config/yazi/yazi.toml`, `config/yazi/keymap.toml`).
+- **Fresh** — its built-in dark theme (`config/fresh/config.json`, `"theme": "builtin://dark"`, schema `version: 2`) rather than a vendored asset, so no extra licensed file is needed and a theme you pick in the editor's own UI is preserved. The default is installed create-only on macOS.
 
 Canonical sources to check online:
 
@@ -39,4 +40,4 @@ Gallery-style places to preview many schemes at once:
 
 ## Font and how to swap
 
-The font stays **JetBrainsMono Nerd Font** regardless of theme. Swapping the theme is a config-only change — update the theme reference in the relevant config files (`config/yazi`, `config/starship`, `config/terminals`, `config/omp`, `config/herdr`) and reapply/restart the affected tool. No code or vendored-file changes are required beyond the theme source.
+The font stays **JetBrainsMono Nerd Font** regardless of theme. Swapping the theme is a config-only change — update the theme reference in the relevant config files (`config/yazi`, `config/starship`, `config/terminals`, `config/omp`, `config/herdr`) and reapply/restart the affected tool. Fresh is the exception: its preferences are user-owned and create-only, so change the theme in Fresh's UI (or in `~/.config/fresh/config.json`) instead of the repository copy, which setup will not overwrite. No code or vendored-file changes are required beyond the theme source.

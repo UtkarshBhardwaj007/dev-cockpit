@@ -8,7 +8,10 @@ import unittest
 from unittest.mock import Mock
 import uuid
 
-from dev_cockpit.workspace import Herdr, HerdrError, _read_response, ensure_workspace, layout_tree, workspace_label
+from dev_cockpit.workspace import (Herdr, HerdrError, _read_response,
+                                   editor_key, ensure_project_tab,
+                                   ensure_code_editor, ensure_workspace, layout_tree,
+                                   pane_environment, workspace_label)
 
 
 class WorkspaceTests(unittest.TestCase):
@@ -24,6 +27,23 @@ class WorkspaceTests(unittest.TestCase):
         layout = layout_tree("project with 'quotes' & space", ["omp", "--config", "file & ' quote"], ["yazi"])
         self.assertEqual(layout["first"]["first"]["command"], ["omp", "--config", "file & ' quote"])
         self.assertEqual(layout["second"]["label"], "Shell")
+
+    def test_code_layout_has_editor_agent_shell_and_explicit_context(self):
+        with tempfile.TemporaryDirectory() as d:
+            layout = layout_tree(d, ["omp"], editor_command=["fresh", "-a", "fixture"],
+                                 session="fixture", layout="code")
+            self.assertEqual(layout["ratio"], 0.78)
+            self.assertEqual(layout["first"]["ratio"], 0.68)
+            self.assertEqual(layout["first"]["first"]["label"], "Editor")
+            self.assertEqual(layout["first"]["second"]["label"], "OMP")
+            self.assertEqual(layout["second"]["label"], "Shell")
+            expected = pane_environment(d, "fixture")
+            self.assertEqual(layout["first"]["first"]["env"], expected)
+            self.assertEqual(expected["DEV_COCKPIT_EDITOR_KEY"], editor_key(d, "fixture"))
+
+    def test_code_layout_requires_editor_command(self):
+        with self.assertRaisesRegex(ValueError, "editor command"):
+            layout_tree(".", ["omp"], layout="code")
 
     def test_reuses_existing_without_restarting_anything(self):
         with tempfile.TemporaryDirectory() as d:
@@ -42,6 +62,76 @@ class WorkspaceTests(unittest.TestCase):
             with self.assertRaisesRegex(HerdrError, "preserved"):
                 ensure_workspace(client, d)
             self.assertEqual(client.cli.call_count, 2)
+
+    def test_project_tab_is_created_once_then_focused(self):
+        with tempfile.TemporaryDirectory() as d:
+            workspace = {"workspace_id": "w1", "label": workspace_label(d)}
+            client = Mock()
+            client.cli.side_effect = [
+                {"workspaces": [workspace]},
+                {"snapshot": {"tabs": [], "panes": []}},
+                {"tab": {"tab_id": "w1:t2"}, "root_pane": {"pane_id": "w1:p4"}},
+            ]
+            client.request.side_effect = [
+                {"ok": True},
+            ]
+            result = ensure_project_tab(client, d, "Files", ["yazi", d])
+            self.assertTrue(result["created"])
+            self.assertEqual(client.cli.call_args_list[2].args[:2], ("tab", "create"))
+            root = client.request.call_args_list[0].args[1]["root"]
+            self.assertEqual(root["command"], ["yazi", d])
+
+            client.reset_mock()
+            client.cli.side_effect = [
+                {"workspaces": [workspace]},
+                {"snapshot": {
+                    "tabs": [{"workspace_id": "w1", "tab_id": "w1:t2", "label": "Files"}],
+                    "panes": [{"tab_id": "w1:t2", "pane_id": "w1:p4", "label": "Files"}],
+                }},
+            ]
+            client.request.side_effect = [
+                {"ok": True},
+                {"ok": True},
+            ]
+            result = ensure_project_tab(client, d, "Files", ["yazi", d])
+            self.assertFalse(result["created"])
+            self.assertEqual([call.args[0] for call in client.request.call_args_list],
+                             ["tab.focus", "pane.focus"])
+
+    def test_project_tab_failure_preserves_created_tab(self):
+        with tempfile.TemporaryDirectory() as d:
+            client = Mock()
+            workspace = {"workspace_id": "w1", "label": workspace_label(d)}
+            client.cli.side_effect = [
+                {"workspaces": [workspace]},
+                {"snapshot": {"tabs": [], "panes": []}},
+                {"tab": {"tab_id": "w1:t2"}},
+            ]
+            client.request.side_effect = TimeoutError("uncertain reply")
+            with self.assertRaisesRegex(HerdrError, "preserved"):
+                ensure_project_tab(client, d, "Review", ["lazygit"])
+
+    def test_existing_code_editor_is_focused_without_replacement(self):
+        with tempfile.TemporaryDirectory() as d:
+            client = Mock()
+            client.cli.return_value = {"snapshot": {"panes": [{
+                "workspace_id": "w1", "tab_id": "w1:t1", "pane_id": "w1:p1",
+                "label": "Editor",
+            }]}}
+            result = ensure_code_editor(client, d, "w1", ["fresh", "-a", "key"])
+            self.assertFalse(result["created"])
+            self.assertEqual([call.args[0] for call in client.request.call_args_list],
+                             ["tab.focus", "pane.focus"])
+
+    def test_duplicate_code_editors_are_not_guessed(self):
+        with tempfile.TemporaryDirectory() as d:
+            client = Mock()
+            client.cli.return_value = {"snapshot": {"panes": [
+                {"workspace_id": "w1", "label": "Editor"},
+                {"workspace_id": "w1", "label": "Editor"},
+            ]}}
+            with self.assertRaisesRegex(HerdrError, "Multiple managed Editor"):
+                ensure_code_editor(client, d, "w1", ["fresh", "-a", "key"])
 
 
 @unittest.skipUnless(os.environ.get("COCKPIT_HERDR_TEST_BIN"), "Set COCKPIT_HERDR_TEST_BIN for a real Herdr server test")

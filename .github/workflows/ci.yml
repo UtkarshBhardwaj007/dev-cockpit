@@ -26,10 +26,28 @@ jobs:
         run: |
           target="$RUNNER_TEMP/dev-cockpit-e2e"
           python bootstrap/cockpit.py --apply-config --home "$target"
+          # Editor assets are gated by qualified platform capability. macOS gets
+          # the Fresh preferences, the backend selection and the executable
+          # dev-edit bridge; Linux gets the bridge only (its editor integration
+          # is experimental); neither platform may receive the other's defaults.
+          test -x "$target/.local/bin/dev-edit"
+          grep -q 'edit "$@"' "$target/.local/bin/dev-edit"
           if [ "$RUNNER_OS" = 'macOS' ]; then
             test -f "$target/.hammerspoon/init.lua"
+            test -f "$target/.config/fresh/config.json"
+            test -f "$target/.config/dev-cockpit/editor.json"
           else
             test ! -e "$target/.hammerspoon/init.lua"
+            test ! -e "$target/.config/fresh/config.json"
+            test ! -e "$target/.config/dev-cockpit/editor.json"
+          fi
+          # A second apply must create nothing new: the bridge and the
+          # create-only editor preferences are stable and idempotent.
+          python bootstrap/cockpit.py --apply-config --home "$target" > "$target/second.log"
+          if grep -q 'APPLY create' "$target/second.log"; then
+            cat "$target/second.log"
+            echo 'Second apply created files instead of reusing the managed ones.' >&2
+            exit 1
           fi
       - name: Default setup end-to-end configuration (Windows)
         if: runner.os == 'Windows'
@@ -38,6 +56,11 @@ jobs:
           $target = Join-Path $env:RUNNER_TEMP 'dev-cockpit-e2e'
           python bootstrap/cockpit.py --apply-config --home $target
           if (Test-Path (Join-Path $target '.hammerspoon/init.lua')) { throw 'Windows must not install the macOS gesture bridge.' }
+          # The Windows editor bridge is not qualified yet, so native Windows must
+          # receive no editor defaults at all rather than a broken opener.
+          if (Test-Path (Join-Path $target '.local/bin/dev-edit')) { throw 'Windows must not receive the POSIX dev-edit bridge.' }
+          if (Test-Path (Join-Path $target '.config/fresh/config.json')) { throw 'Windows must not receive unqualified Fresh preferences.' }
+          if (Test-Path (Join-Path $target '.config/dev-cockpit/editor.json')) { throw 'Windows must not receive the macOS-only editor backend selection.' }
       - name: Unix entrypoint and shell syntax
         if: runner.os != 'Windows'
         shell: bash

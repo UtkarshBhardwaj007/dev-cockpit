@@ -176,7 +176,89 @@ class ConfigurationTests(unittest.TestCase):
         self.assertTrue(keymap.is_file())
         self.assertIn(b'[opener]', behavior.read_bytes())
         self.assertIn(b'bat', behavior.read_bytes())
+        self.assertIn(b'dev-edit -- %s', behavior.read_bytes())
+        self.assertIn(b'dev-edit --standalone --wait -- %s', behavior.read_bytes())
+        self.assertIn(b'External editor', behavior.read_bytes())
         self.assertIn(b'prepend_keymap', keymap.read_bytes())
+
+    def test_fresh_preferences_are_macos_only_and_create_only(self):
+        for target in ('linux', 'windows'):
+            paths, _ = config.config_targets(self.home, target)
+            self.assertNotIn('config/fresh/config.json', paths)
+            self.assertNotIn('config/editor/editor.json', paths)
+        paths, _ = config.config_targets(self.home, 'macos')
+        fresh = paths['config/fresh/config.json']
+        editor = paths['config/editor/editor.json']
+        self.apply('macos')
+        fresh.write_bytes(b'{"theme":"personal"}\n')
+        editor.write_bytes(b'{"schema":1,"backend":"external"}\n')
+        self.apply('macos', force=True)
+        self.assertEqual(fresh.read_bytes(), b'{"theme":"personal"}\n')
+        self.assertEqual(editor.read_bytes(), b'{"schema":1,"backend":"external"}\n')
+
+    def test_dev_edit_bridge_is_installed_on_unix_only(self):
+        # The bridge is a POSIX shell wrapper: macOS and Linux get it, native
+        # Windows needs a separate .cmd wrapper that is not qualified yet.
+        for target in ('macos', 'linux'):
+            paths, _ = config.config_targets(self.home, target)
+            self.assertEqual(paths.get('config/bridge/dev-edit'), self.home / '.local/bin/dev-edit')
+        windows, _ = config.config_targets(self.home, 'windows')
+        self.assertNotIn('config/bridge/dev-edit', windows)
+
+    def test_linux_bridge_routes_through_selected_python_and_runtime(self):
+        # Regression: the bridge used to be macOS-only, so `fe` on Linux exited
+        # 127. Prove a Linux apply installs an executable bridge that forwards
+        # the literal arguments to the deployed runtime.
+        deployed = self.base / "linux runtime ' % ! & (safe)"
+        shutil.copytree(ROOT / 'config', deployed / 'config')
+        (deployed / 'bootstrap').mkdir()
+        (deployed / 'bootstrap/cockpit.py').write_text(
+            'import json,sys\nprint(json.dumps(sys.argv[1:]))\n')
+        self.apply('linux', root=deployed, python_executable=sys.executable)
+        bridge = self.home / '.local/bin/dev-edit'
+        self.assertTrue(bridge.stat().st_mode & stat.S_IXUSR)
+        argument = "file with spaces ' and\nnewline"
+        result = subprocess.run([str(bridge), '--', argument], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout), ['edit', '--', argument])
+
+    def test_macos_fresh_config_ignores_xdg_like_fresh_does(self):
+        # Verified against Fresh 0.5.1: `fresh --cmd config paths` reports
+        # ~/.config/fresh on macOS even with XDG_CONFIG_HOME set, so writing to
+        # the XDG location would install a file Fresh never reads.
+        configured = self.base / 'xdg config'
+        with patch.dict(os.environ, {'XDG_CONFIG_HOME': str(configured)}):
+            paths, _ = config.config_targets(self.home, 'macos', use_environment=True)
+        self.assertEqual(paths['config/fresh/config.json'],
+                         self.home / '.config/fresh/config.json')
+        self.assertNotEqual(paths['config/fresh/config.json'].parent.parent, configured)
+
+    def test_macos_fresh_config_uses_the_qualified_schema_version(self):
+        # Fresh 0.5.1 reports and writes "version": 2; shipping version 1 would
+        # be silently migrated and rewritten under the user.
+        import json as _json
+        declared = _json.loads((ROOT / 'config/fresh/config.json').read_text())
+        self.assertEqual(declared['version'], 2)
+        self.assertIs(declared['check_for_updates'], False)
+        self.assertIs(declared['editor']['line_numbers'], True)
+
+    def test_bridge_uses_selected_python_and_deployed_runtime(self):
+        deployed = self.base / "deployed runtime ' % ! & (safe)"
+        shutil.copytree(ROOT / 'config', deployed / 'config')
+        (deployed / 'bootstrap').mkdir()
+        (deployed / 'bootstrap/cockpit.py').write_text(
+            'import json,sys\nprint(json.dumps(sys.argv[1:]))\n')
+        selected_python = Path(sys.executable).resolve()
+        self.apply('macos', root=deployed, python_executable=selected_python)
+        bridge = self.home / '.local/bin/dev-edit'
+        self.assertTrue(bridge.stat().st_mode & stat.S_IXUSR)
+        argument = "file with spaces ' and\nnewline"
+        result = subprocess.run([str(bridge), '--', argument], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout), ['edit', '--', argument])
+        text = bridge.read_text()
+        self.assertIn(str(selected_python), text)
+        self.assertIn(config.shlex.quote(str(deployed / 'bootstrap/cockpit.py')), text)
 
     def test_hammerspoon_bridge_is_default_on_macos_only(self):
         for target in ('linux', 'windows'):

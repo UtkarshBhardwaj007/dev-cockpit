@@ -171,6 +171,53 @@ class ShellTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout.split(), ['function', 'function', 'function'])
 
+    @unittest.skipIf(os.name == 'nt', 'The NUL-delimited picker is a POSIX shell feature')
+    def test_fe_preserves_newline_filename_and_routes_through_bridge(self):
+        selection = str(self.base / 'line\nbreak and spaces.py')
+        (self.bin / 'fd').write_text(
+            '#!/bin/sh\n'
+            'if [ "${1:-}" = --help ]; then printf "%s\\n" --print0; else printf "%s\\0" "$DEV_COCKPIT_TEST_PICK"; fi\n')
+        (self.bin / 'fzf').write_text(
+            '#!/bin/sh\n'
+            'if [ "${1:-}" = --help ]; then printf "%s\\n" "--read0 --print0"; else cat; fi\n')
+        self.env['DEV_COCKPIT_TEST_PICK'] = selection
+        for shell in ['bash', 'zsh']:
+            if not shutil.which(shell):
+                continue
+            profile = self.home / ('.bashrc' if shell == 'bash' else '.zshrc')
+            result = self.run_shell(shell, profile, 'fe')
+            self.assertEqual(result.returncode, 0, result.stderr)
+            arguments = json.loads(next(line.removeprefix('ARGUMENTS=') for line in result.stdout.splitlines()
+                                        if line.startswith('ARGUMENTS=')))
+            self.assertEqual(arguments, ['edit', '--', selection])
+
+    @unittest.skipIf(os.name == 'nt', 'The NUL-delimited picker is a POSIX shell feature')
+    def test_fe_falls_back_to_editor_when_bridge_is_absent(self):
+        # Regression: `fe` used to exit 127 whenever the macOS-only bridge was
+        # missing. On unqualified platforms it must keep the existing EDITOR
+        # behavior instead of breaking the fuzzy picker outright.
+        (self.home / '.local/bin/dev-edit').unlink()
+        selection = str(self.base / 'plain file.py')
+        (self.bin / 'fd').write_text(
+            '#!/bin/sh\n'
+            'if [ "${1:-}" = --help ]; then printf "%s\\n" --print0; else printf "%s\\0" "$DEV_COCKPIT_TEST_PICK"; fi\n')
+        (self.bin / 'fzf').write_text(
+            '#!/bin/sh\n'
+            'if [ "${1:-}" = --help ]; then printf "%s\\n" "--read0 --print0"; else cat; fi\n')
+        self.env['DEV_COCKPIT_TEST_PICK'] = selection
+        # Isolate the editor choice: an inherited VISUAL/EDITOR would otherwise
+        # launch a real interactive editor and hang the test runner.
+        self.env.pop('VISUAL', None)
+        self.env['EDITOR'] = 'my-editor'
+        (self.bin / 'my-editor').write_text(
+            '#!/bin/sh\nprintf "%s\\n" "MY-EDITOR" >&2\nfor _dc_arg in "$@"; do printf "%s\\n" "$_dc_arg" >&2; done\n')
+        (self.bin / 'my-editor').chmod(0o755)
+        result = self.run_shell('bash', self.home / '.bashrc', 'fe')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn('dev-edit bridge is missing', result.stderr)
+        self.assertIn('MY-EDITOR', result.stderr)
+        self.assertIn(selection, result.stderr)
+
     def test_shell_wrappers_forward_all_cli_commands(self):
         result = self.run_shell('bash', self.home / '.bashrc', '\n'.join(name + ' "--some flag"' for name in ['dev-doctor', 'dev-update', 'dev-uninstall', 'dev-memory', 'dev-graph', 'dev-completions']))
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -179,10 +226,14 @@ class ShellTests(unittest.TestCase):
 
     def test_dev_dispatches_documented_subcommands_and_defaults_to_launch(self):
         result = self.run_shell('bash', self.home / '.bashrc',
-                                '\n'.join(['dev open .', 'dev memory show .', 'dev graph init .', 'dev "project with spaces"', 'dev']))
+                                '\n'.join(['dev open .', 'dev edit -- file.py', 'dev files .', 'dev review .',
+                                           'dev editor doctor .', 'dev memory show .', 'dev graph init .',
+                                           'dev "project with spaces"', 'dev']))
         self.assertEqual(result.returncode, 0, result.stderr)
         actual = [json.loads(line.removeprefix('ARGUMENTS=')) for line in result.stdout.splitlines() if line.startswith('ARGUMENTS=')]
-        self.assertEqual(actual, [['open', '.'], ['memory', 'show', '.'], ['graph', 'init', '.'], ['launch', 'project with spaces'], ['launch']])
+        self.assertEqual(actual, [['open', '.'], ['edit', '--', 'file.py'], ['files', '.'], ['review', '.'],
+                                  ['editor', 'doctor', '.'], ['memory', 'show', '.'], ['graph', 'init', '.'],
+                                  ['launch', 'project with spaces'], ['launch']])
 
     @unittest.skipUnless(os.name == 'nt', 'Native Windows profile execution runs in Windows CI')
     def test_native_powershell_profiles_parse_and_forward_arguments(self):
@@ -196,10 +247,11 @@ class ShellTests(unittest.TestCase):
             entry = self.base / ('entry-' + shell + '.ps1')
             # Explicit tool-specific overrides isolate every optional hook.
             skips = '\n'.join("$env:DEV_COCKPIT_SKIP_" + name + "='1'" for name in ['STARSHIP', 'ZOXIDE', 'MISE', 'ATUIN', 'PSREADLINE'])
-            entry.write_text(skips + '\n. ' + config._quote_ps(profile) + "\n. " + config._quote_ps(profile) + "\ndev 'project with spaces' 'quote''s'\n", encoding='utf-8-sig')
+            entry.write_text(skips + '\n. ' + config._quote_ps(profile) + "\n. " + config._quote_ps(profile) + "\ndev 'project with spaces' 'quote''s'\ndev edit -- 'file & (quoted) ! % name'\n", encoding='utf-8-sig')
             result = subprocess.run([executable, '-NoLogo', '-NoProfile', '-NonInteractive', '-File', str(entry)], cwd=self.base, env=os.environ.copy(), capture_output=True, text=True, timeout=30)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn('ARGUMENTS=["launch", "project with spaces", "quote\'s"]', result.stdout)
+            self.assertIn('ARGUMENTS=["edit", "--", "file & (quoted) ! % name"]', result.stdout)
 
 
 if __name__ == '__main__':

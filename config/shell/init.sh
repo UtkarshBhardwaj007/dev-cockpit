@@ -28,6 +28,16 @@ _dc_cockpit_files() {
         find . -type f -not -path '*/.git/*' -not -path '*/node_modules/*'
     fi
 }
+_dc_cockpit_files_nul() {
+    if command -v fd >/dev/null 2>&1 && fd --help 2>&1 | command grep -q -- '--print0'; then
+        fd --type f --hidden --exclude .git --exclude node_modules --exclude .venv --print0
+    elif (find . -prune -print0 >/dev/null 2>&1); then
+        find . -type f -not -path '*/.git/*' -not -path '*/node_modules/*' -print0
+    else
+        printf '%s\n' 'fe requires fd or find with NUL-delimited output support.' >&2
+        return 2
+    fi
+}
 _dev_cockpit() {
     if [ -z "${DEV_COCKPIT_ROOT:-}" ] || [ ! -f "$DEV_COCKPIT_ROOT/bootstrap/cockpit.py" ]; then
         printf '%s\n' 'Dev Cockpit runtime is missing. Rerun setup to repair it.' >&2
@@ -40,7 +50,7 @@ _dev_cockpit() {
 # documented forms (`dev open .`, `dev memory show .`, `dev graph init .`) work.
 command -v dev >/dev/null 2>&1 || function dev {
     case "${1:-}" in
-        launch|doctor|update|uninstall|completions|mobile|memory|graph|open) _dev_cockpit "$@" ;;
+        launch|doctor|update|uninstall|completions|mobile|memory|graph|open|edit|files|review|editor) _dev_cockpit "$@" ;;
         *) _dev_cockpit launch "$@" ;;
     esac
 }
@@ -60,9 +70,14 @@ fi
 if command -v delta >/dev/null 2>&1; then
     command -v dg >/dev/null 2>&1 || function dg { git -c "include.path=$DEV_COCKPIT_CONFIG_DIR/delta.gitconfig" "$@"; }
 fi
-# A terminal editor makes yazi's `edit` opener and the fuzzy helpers useful.
+# Preserve user editor choices. Fresh becomes the macOS default only when the
+# qualified binary is present; optional platforms keep the existing fallbacks.
 if [ -z "${EDITOR:-}" ]; then
+    if [ "$(uname -s 2>/dev/null)" = Darwin ] && command -v fresh >/dev/null 2>&1; then
+        EDITOR=fresh
+    fi
     for _dc_editor in nvim vim hx nano; do
+        [ -z "${EDITOR:-}" ] || break
         if command -v "$_dc_editor" >/dev/null 2>&1; then EDITOR="$_dc_editor"; break; fi
     done
     [ -z "${EDITOR:-}" ] || export EDITOR
@@ -87,15 +102,43 @@ if command -v yazi >/dev/null 2>&1; then
         return "$_dc_status"
     }
 fi
-# Fuzzy file explorer: `fe` edits the pick, `fv` pages it with bat.
+# Fuzzy file explorer: `fe` preserves every legal Unix filename by keeping the
+# discovery, picker and bridge boundaries NUL-delimited. `fv` remains a pager.
 if command -v fzf >/dev/null 2>&1; then
     command -v fe >/dev/null 2>&1 || function fe {
-        local _dc_pick
-        _dc_pick=$(_dc_cockpit_files | fzf --height=80% --layout=reverse --border \
+        local _dc_candidates _dc_pick _dc_status
+        if ! fzf --help 2>&1 | command grep -q -- '--read0' || ! fzf --help 2>&1 | command grep -q -- '--print0'; then
+            printf '%s\n' 'fe requires fzf with --read0 and --print0 support.' >&2
+            return 2
+        fi
+        _dc_candidates=$(mktemp "${TMPDIR:-/tmp}/dev-cockpit-files.XXXXXXXX") || return
+        _dc_pick=$(mktemp "${TMPDIR:-/tmp}/dev-cockpit-pick.XXXXXXXX") || {
+            command rm -f -- "$_dc_candidates"
+            return
+        }
+        _dc_cockpit_files_nul > "$_dc_candidates" || {
+            _dc_status=$?
+            command rm -f -- "$_dc_candidates" "$_dc_pick"
+            return "$_dc_status"
+        }
+        fzf --read0 --print0 --height=80% --layout=reverse --border \
             --preview 'bat --style=numbers,changes,header --color=always --line-range=:200 {} 2>/dev/null || cat {}' \
-            --preview-window 'right:60%:wrap' "$@") || return
-        [ -n "$_dc_pick" ] || return
-        "${EDITOR:-vi}" "$_dc_pick"
+            --preview-window 'right:60%:wrap' "$@" < "$_dc_candidates" > "$_dc_pick"
+        _dc_status=$?
+        command rm -f -- "$_dc_candidates"
+        if [ "$_dc_status" -eq 0 ] && [ -s "$_dc_pick" ]; then
+            # Prefer the owned bridge, which routes through the shared editor
+            # logic. A qualified macOS setup installs it; unqualified platforms
+            # keep the previous $EDITOR behavior instead of failing outright.
+            if command -v dev-edit >/dev/null 2>&1; then
+                command xargs -0 dev-edit -- < "$_dc_pick"
+            else
+                command xargs -0 "${VISUAL:-${EDITOR:-vi}}" -- < "$_dc_pick"
+            fi
+            _dc_status=$?
+        fi
+        command rm -f -- "$_dc_pick"
+        return "$_dc_status"
     }
     command -v fv >/dev/null 2>&1 || function fv {
         local _dc_pick
